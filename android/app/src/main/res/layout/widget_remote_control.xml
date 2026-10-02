@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_remote_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🎮 PC Remote Control"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_remote_device"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LAPTOP"
+            android:textColor="#38BDF8"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="8dp">
+
+        <!-- Prev Track -->
+        <Button
+            android:id="@+id/btn_remote_prev"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="3dp"
+            android:backgroundTint="#334155"
+            android:text="⏮"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <!-- Play/Pause -->
+        <Button
+            android:id="@+id/btn_remote_play"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1.2"
+            android:layout_marginEnd="3dp"
+            android:backgroundTint="#0284C7"
+            android:text="⏯"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+
+        <!-- Next Track -->
+        <Button
+            android:id="@+id/btn_remote_next"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="3dp"
+            android:backgroundTint="#334155"
+            android:text="⏭"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <!-- Volume Down -->
+        <Button
+            android:id="@+id/btn_remote_voldown"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="3dp"
+            android:backgroundTint="#334155"
+            android:text="🔉"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <!-- Volume Up -->
+        <Button
+            android:id="@+id/btn_remote_volup"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="3dp"
+            android:backgroundTint="#334155"
+            android:text="🔊"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <!-- Lock PC -->
+        <Button
+            android:id="@+id/btn_remote_lock"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:backgroundTint="#EF4444"
+            android:text="🔒"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+    </LinearLayout>
+</LinearLayout>

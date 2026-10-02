@@ -45,6 +45,7 @@ object AppState {
 
     var isConnected by mutableStateOf(false)
     var connectedDeviceName by mutableStateOf("Searching...")
+    var selectedNavigationTab by mutableStateOf(0)
     var currentSpeedMb by mutableStateOf(0.0)
     var usbSpeedMb by mutableStateOf(0.0)
     var wifiSpeedMb by mutableStateOf(0.0)

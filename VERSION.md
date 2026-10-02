@@ -33,11 +33,20 @@ This document maintains the synchronized version numbers, build counters, patch 
    - Dynamic UI badge showing active link status (`[⚡ USB (Active)]`, `[📶 Wi-Fi (Standby)]`).
 3. **Sound Notifications on Task Completion**:
    - Audio feedback on Android (`RingtoneManager` notification sound) and Windows (`SystemSounds.Asterisk`) upon file transfer, remote clip sync, and cache clear.
-4. **Ergonomic Remote Control Redesign**:
-   - Repositioned Left Click, Middle Mouse Click (🔘), and Right Click to the top of the trackpad for immediate thumb access.
-   - Enlarged thumb-friendly trackpad with side vertical scroll strip.
-   - Horizontal scroll wheel strip relocated cleanly below trackpad.
-5. **Git Version Control & Repository Setup**:
+4. **Mobile App Rebranding ("ConnectToWindow")**:
+   - Mobile app renamed to **ConnectToWindow** across launcher, status bar, and UI headers.
+5. **Vector Drawables & SVG Asset System**:
+   - Converted icons from PNG to scalable SVG and Android Vector XML drawables (`app_icon.svg`, `ic_connect_window.xml`, `ic_launcher_foreground.xml`, `ic_qs_tile.xml`).
+6. **Android Quick Settings (Control Panel) Tile**:
+   - System notification pull-down toggle tile (`QuickConnectTileService`) enabling one-tap connection and live status inspection from anywhere in Android.
+7. **Android Home Screen Widgets**:
+   - **Link Status & Quick Launch Widget** (`ConnectStatusWidgetProvider`): Displays live PC connection badge and direct 1-tap shortcuts to Connect, PC Files, and Clipboard.
+   - **PC Remote & Media Widget** (`RemoteControlWidgetProvider`): Directly triggers Play/Pause, Next/Prev, Volume Up/Down, and PC Lock without opening the app.
+8. **Ergonomic Thumb-Zone Remote Layout**:
+   - Re-engineered trackpad position to align with the lower thumb zone of the display for natural one-handed reach.
+   - Left Click, Middle Mouse Click (🔘), and Right Click positioned directly below trackpad.
+   - Horizontal Scroll Strip positioned at the very bottom below click buttons.
+9. **Git Version Control & Repository Setup**:
    - Official remote origin registered: `https://github.com/Vijay-1010110/ConnectToPhone.git`.
 
 ---

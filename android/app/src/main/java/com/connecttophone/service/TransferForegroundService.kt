@@ -71,7 +71,7 @@ class TransferForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "ConnectToPhone Transfers",
+                "ConnectToWindow Transfers",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Shows active transfer speed and progress in top bar"
@@ -89,7 +89,7 @@ class TransferForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("ConnectToPhone ⚡")
+            .setContentTitle("ConnectToWindow ⚡")
             .setContentText("Connected & Ready")
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setContentIntent(pendingIntent)

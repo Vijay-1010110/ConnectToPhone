@@ -110,7 +110,11 @@ class MainActivity : ComponentActivity() {
             startListening()
         }
 
-        // 7. Handle incoming Share Sheet Intent (send files to PC from any other app)
+        // 7. Handle incoming Share Sheet Intent and Widget Navigation
+        val targetTab = intent?.getIntExtra("TARGET_TAB", -1) ?: -1
+        if (targetTab >= 0) {
+            AppState.selectedNavigationTab = targetTab
+        }
         handleShareIntent(intent)
 
         // 8. Daily/Periodic cache LRU cleanup loop (runs every 6 hours)
@@ -193,6 +197,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        val targetTab = intent.getIntExtra("TARGET_TAB", -1)
+        if (targetTab >= 0) {
+            AppState.selectedNavigationTab = targetTab
+        }
         handleShareIntent(intent)
     }
 

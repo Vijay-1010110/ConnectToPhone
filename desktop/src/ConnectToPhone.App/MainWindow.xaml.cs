@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<PairedDeviceDisplay> _pairedDevices = [];
     private readonly ObservableCollection<CachedFileItem> _cachedFiles = [];
     private readonly Dictionary<ulong, SparseFileWriter> _activeWriters = [];
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, ChunkScheduler> _activeSchedulers = new();
     private CancellationTokenSource? _autoConnectCts;
     private string _currentCacheFilter = "All";
 
@@ -472,6 +473,19 @@ public partial class MainWindow : Window
                     }
                 }
                 break;
+
+            case FrameType.TransferChunkAck:
+                if (TransferChunkAck.TryParse(frame.Payload, out var incomingAck) && incomingAck != null)
+                {
+                    if (_activeSchedulers.TryGetValue(incomingAck.TransferId, out var scheduler))
+                    {
+                        if (incomingAck.Success)
+                        {
+                            scheduler.AcknowledgeChunk(incomingAck.ChunkIndex);
+                        }
+                    }
+                }
+                break;
         }
     }
 
@@ -664,6 +678,7 @@ public partial class MainWindow : Window
         {
             var scheduler = new ChunkScheduler(filePath);
             scheduler.Manifest.IsPreview = isPreview;
+            _activeSchedulers[scheduler.TransferId] = scheduler;
             TxtBondedSpeed.Text = "🚀 Multi-Path Turbo Burst";
             _activityLog.Insert(0, $"[Upload] Streaming '{scheduler.Manifest.FileName}' ({scheduler.Manifest.TotalBytes / 1024.0 / 1024.0:F1} MB) to phone (Preview: {isPreview})...");
 
@@ -675,7 +690,8 @@ public partial class MainWindow : Window
             ));
 
             // Stream chunks
-            while (!scheduler.IsComplete)
+            int timeoutCounter = 0;
+            while (!scheduler.IsComplete && timeoutCounter < 1500)
             {
                 if (scheduler.TryGetNextChunk(_activeTransport.ChannelId, out var chunk) && chunk != null)
                 {
@@ -684,16 +700,23 @@ public partial class MainWindow : Window
                         12345678,
                         chunk.Serialize()
                     ));
-
-                    double progress = (double)scheduler.AckedCount / scheduler.TotalChunks;
-                    UpdateTaskbarProgress(progress, TaskbarItemProgressState.Normal);
+                    timeoutCounter = 0;
                 }
                 else
                 {
                     await Task.Delay(10);
+                    timeoutCounter++;
+                    if (timeoutCounter % 100 == 0)
+                    {
+                        scheduler.RequeueTimedOutChunks(TimeSpan.FromSeconds(2));
+                    }
                 }
+
+                double progress = scheduler.TotalChunks > 0 ? (double)scheduler.AckedCount / scheduler.TotalChunks : 0;
+                UpdateTaskbarProgress(progress, TaskbarItemProgressState.Normal);
             }
 
+            _activeSchedulers.TryRemove(scheduler.TransferId, out _);
             UpdateTaskbarProgress(1.0, TaskbarItemProgressState.None);
             TxtBondedSpeed.Text = "Idle / Energy Saver";
             try { System.Media.SystemSounds.Asterisk.Play(); } catch {}

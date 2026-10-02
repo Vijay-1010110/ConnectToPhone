@@ -38,7 +38,7 @@ fun MainScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var selectedTab by remember { mutableStateOf(0) }
+    val selectedTab = AppState.selectedNavigationTab
 
     // Clipboard state
     var autoClipboardSync by remember { mutableStateOf(true) }
@@ -55,7 +55,7 @@ fun MainScreen(
                 title = {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("ConnectToPhone", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("ConnectToWindow", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(Modifier.width(8.dp))
                             Box(
                                 modifier = Modifier
@@ -94,14 +94,14 @@ fun MainScreen(
             NavigationBar {
                 NavigationBarItem(
                     selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
+                    onClick = { AppState.selectedNavigationTab = 0 },
                     icon = { Text("⚡", fontSize = 18.sp) },
                     label = { Text("Transfers") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = {
-                        selectedTab = 1
+                        AppState.selectedNavigationTab = 1
                         if (AppState.isConnected && AppState.pcEntries.isEmpty()) {
                             AppState.requestPcDirectory("/")
                         }
@@ -111,19 +111,19 @@ fun MainScreen(
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
+                    onClick = { AppState.selectedNavigationTab = 2 },
                     icon = { Text("📋", fontSize = 18.sp) },
                     label = { Text("Clipboard") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
+                    onClick = { AppState.selectedNavigationTab = 3 },
                     icon = { Text("🎮", fontSize = 18.sp) },
                     label = { Text("Remote") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 4,
-                    onClick = { selectedTab = 4 },
+                    onClick = { AppState.selectedNavigationTab = 4 },
                     icon = { Text("💾", fontSize = 18.sp) },
                     label = { Text("Storage") }
                 )
@@ -498,155 +498,15 @@ fun ClipboardTab(
 fun RemoteControlTab(context: Context) {
     var textToSend by remember { mutableStateOf("") }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // 1. ERGONOMIC TOUCHPAD (Clicks UP, Thumb Trackpad Center, Horizontal Scroll DOWN)
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        // 1. REMOTE KEYBOARD & QUICK ACTIONS (Top Section)
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Ergonomic Remote Trackpad", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("Tap = Left Click", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Spacer(Modifier.height(10.dp))
-
-                    // Left, Middle & Right Click physical buttons MOVED UP
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { AppState.sendMouseDelta(0, 0, leftClick = true) },
-                            modifier = Modifier.weight(1.1f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("Left Click", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        FilledTonalButton(
-                            onClick = { AppState.sendMouseDelta(0, 0, middleClick = true) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("🔘 Middle", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        Button(
-                            onClick = { AppState.sendMouseDelta(0, 0, rightClick = true) },
-                            modifier = Modifier.weight(1.1f),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                        ) {
-                            Text("Right Click", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    // Large Center Trackpad for Natural Thumb Control
-                    Row(Modifier.fillMaxWidth().height(230.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .background(Color(0xFF1E1E24), RoundedCornerShape(10.dp))
-                                .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onTap = {
-                                            AppState.sendMouseDelta(0, 0, leftClick = true)
-                                        },
-                                        onDoubleTap = {
-                                            AppState.sendMouseDelta(0, 0, leftClick = true)
-                                            AppState.sendMouseDelta(0, 0, leftClick = true)
-                                        },
-                                        onLongPress = {
-                                            AppState.sendMouseDelta(0, 0, rightClick = true)
-                                        }
-                                    )
-                                }
-                                .pointerInput(Unit) {
-                                    detectDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        AppState.sendMouseDelta(
-                                            (dragAmount.x * 1.5f).toInt(),
-                                            (dragAmount.y * 1.5f).toInt()
-                                        )
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "Natural Thumb Trackpad\nDrag to Move Cursor • Tap to Click",
-                                color = Color(0xFF71717A),
-                                fontSize = 12.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-
-                        Spacer(Modifier.width(8.dp))
-
-                        // Vertical Scroll Wheel Strip
-                        Box(
-                            modifier = Modifier
-                                .width(44.dp)
-                                .fillMaxHeight()
-                                .background(Color(0xFF27272A), RoundedCornerShape(10.dp))
-                                .pointerInput(Unit) {
-                                    detectDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        val scroll = (-dragAmount.y * 12).toInt()
-                                        if (scroll != 0) {
-                                            AppState.sendMouseDelta(0, 0, wheelDelta = scroll)
-                                        }
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("▲", fontSize = 12.sp, color = Color(0xFFA1A1AA))
-                                Text("↕", fontSize = 16.sp, color = Color(0xFF60A5FA), fontWeight = FontWeight.Bold)
-                                Text("▼", fontSize = 12.sp, color = Color(0xFFA1A1AA))
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(10.dp))
-
-                    // Horizontal Scroll Wheel Strip MOVED DOWN (below trackpad)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(40.dp)
-                            .background(Color(0xFF27272A), RoundedCornerShape(8.dp))
-                            .pointerInput(Unit) {
-                                detectDragGestures { change, dragAmount ->
-                                    change.consume()
-                                    val scroll = (dragAmount.x * 12).toInt()
-                                    if (scroll != 0) {
-                                        AppState.sendMouseDelta(0, 0, wheelDeltaX = scroll)
-                                    }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("◀  Horizontal Scroll Wheel  ▶", fontSize = 12.sp, color = Color(0xFF93C5FD), fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-        }
-
-        // 2. REMOTE KEYBOARD & QUICK ACTIONS
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Remote Keyboard & Hotkeys", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Column(Modifier.padding(14.dp)) {
+                    Text("Remote Keyboard & Hotkeys", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(Modifier.height(8.dp))
 
                     // Type text to PC directly
@@ -672,8 +532,8 @@ fun RemoteControlTab(context: Context) {
                         }
                     }
 
-                    Spacer(Modifier.height(12.dp))
-                    Text("System Shortcuts:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(10.dp))
+                    Text("System Shortcuts:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(6.dp))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -722,15 +582,15 @@ fun RemoteControlTab(context: Context) {
             }
         }
 
-        // 3. MEDIA & VOLUME CONTROLS
+        // 2. MEDIA & VOLUME CONTROLS
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("PC Media & Volume", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Spacer(Modifier.height(10.dp))
+                Column(Modifier.padding(14.dp)) {
+                    Text("PC Media & Volume", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
@@ -758,15 +618,15 @@ fun RemoteControlTab(context: Context) {
             }
         }
 
-        // 4. POWER & SECURITY ACTIONS
+        // 3. POWER & SECURITY ACTIONS
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("PC Power & Lock Actions", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Spacer(Modifier.height(10.dp))
+                Column(Modifier.padding(14.dp)) {
+                    Text("PC Power & Lock Actions", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -793,6 +653,152 @@ fun RemoteControlTab(context: Context) {
                             Spacer(Modifier.width(6.dp))
                             Text("Sleep")
                         }
+                    }
+                }
+            }
+        }
+
+        // 4. NATURAL THUMB TOUCHPAD (Aligned to Bottom for Comfort)
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Thumb-Zone Touchpad", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("Tap = Left • Long = Right", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Full-width trackpad with right vertical scroll strip
+                    Row(Modifier.fillMaxWidth().height(240.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(Color(0xFF1E1E24), RoundedCornerShape(10.dp))
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            AppState.sendMouseDelta(0, 0, leftClick = true)
+                                        },
+                                        onDoubleTap = {
+                                            AppState.sendMouseDelta(0, 0, leftClick = true)
+                                            AppState.sendMouseDelta(0, 0, leftClick = true)
+                                        },
+                                        onLongPress = {
+                                            AppState.sendMouseDelta(0, 0, rightClick = true)
+                                        }
+                                    )
+                                }
+                                .pointerInput(Unit) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        AppState.sendMouseDelta(
+                                            (dragAmount.x * 1.6f).toInt(),
+                                            (dragAmount.y * 1.6f).toInt()
+                                        )
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("👆", fontSize = 28.sp)
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Natural Thumb Trackpad\nSwipe to glide cursor smoothly",
+                                    color = Color(0xFFA1A1AA),
+                                    fontSize = 12.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.width(8.dp))
+
+                        // Vertical Scroll Wheel Strip
+                        Box(
+                            modifier = Modifier
+                                .width(46.dp)
+                                .fillMaxHeight()
+                                .background(Color(0xFF27272A), RoundedCornerShape(10.dp))
+                                .pointerInput(Unit) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        val scroll = (-dragAmount.y * 14).toInt()
+                                        if (scroll != 0) {
+                                            AppState.sendMouseDelta(0, 0, wheelDelta = scroll)
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("▲", fontSize = 12.sp, color = Color(0xFFA1A1AA))
+                                Spacer(Modifier.height(6.dp))
+                                Text("↕", fontSize = 18.sp, color = Color(0xFF60A5FA), fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(6.dp))
+                                Text("▼", fontSize = 12.sp, color = Color(0xFFA1A1AA))
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // Left, Middle & Right Click buttons BELOW trackpad, ABOVE horizontal scroll
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { AppState.sendMouseDelta(0, 0, leftClick = true) },
+                            modifier = Modifier.weight(1.1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Left Click", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                        FilledTonalButton(
+                            onClick = { AppState.sendMouseDelta(0, 0, middleClick = true) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("🔘 Middle", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                        Button(
+                            onClick = { AppState.sendMouseDelta(0, 0, rightClick = true) },
+                            modifier = Modifier.weight(1.1f),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Text("Right Click", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Horizontal Scroll Wheel Strip BELOW click buttons
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(42.dp)
+                            .background(Color(0xFF27272A), RoundedCornerShape(8.dp))
+                            .pointerInput(Unit) {
+                                detectDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    val scroll = (dragAmount.x * 14).toInt()
+                                    if (scroll != 0) {
+                                        AppState.sendMouseDelta(0, 0, wheelDeltaX = scroll)
+                                    }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("◀  Horizontal Scroll Wheel  ▶", fontSize = 12.sp, color = Color(0xFF93C5FD), fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

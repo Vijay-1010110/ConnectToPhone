@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E293B" />
+    </linearGradient>
+    <linearGradient id="screenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="100%" stop-color="#0369A1" />
+    </linearGradient>
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#EAB308" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect x="32" y="32" width="448" height="448" rx="80" fill="url(#bgGrad)" stroke="#334155" stroke-width="4" />
+
+  <!-- PC Window Frame -->
+  <rect x="70" y="110" width="220" height="170" rx="16" fill="#1E293B" stroke="#475569" stroke-width="3" />
+  <!-- Window Header Bar -->
+  <rect x="70" y="110" width="220" height="34" rx="16" fill="#38BDF8" />
+  <rect x="70" y="130" width="220" height="14" fill="#38BDF8" />
+  <!-- Window Control Buttons -->
+  <circle cx="92" cy="127" r="6" fill="#EF4444" />
+  <circle cx="112" cy="127" r="6" fill="#FBBF24" />
+  <circle cx="132" cy="127" r="6" fill="#34D399" />
+  <!-- PC Display Area -->
+  <rect x="80" y="152" width="200" height="118" rx="6" fill="#0F172A" />
+  <!-- PC Stand -->
+  <rect x="165" y="280" width="30" height="40" fill="#475569" />
+  <rect x="130" y="320" width="100" height="14" rx="6" fill="#64748B" />
+
+  <!-- Smartphone Frame -->
+  <rect x="290" y="180" width="150" height="230" rx="28" fill="#1E293B" stroke="#60A5FA" stroke-width="4" filter="url(#glow)" />
+  <!-- Smartphone Screen -->
+  <rect x="302" y="215" width="126" height="165" rx="10" fill="url(#screenGrad)" />
+  <!-- Speaker and Camera -->
+  <rect x="345" y="196" width="40" height="5" rx="2.5" fill="#94A3B8" />
+  <circle cx="335" cy="198" r="3" fill="#64748B" />
+  <!-- Home Indicator -->
+  <rect x="345" y="392" width="40" height="5" rx="2.5" fill="#94A3B8" />
+
+  <!-- High-Speed Lightning Bond (Multi-Path Bridge) -->
+  <path d="M260 170 L210 270 L260 270 L220 370 L320 250 L270 250 Z"
+        fill="url(#boltGrad)"
+        filter="url(#glow)" />
+</svg>

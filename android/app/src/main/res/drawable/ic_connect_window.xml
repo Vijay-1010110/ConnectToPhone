@@ -1,0 +1,35 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp"
+    android:height="128dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+    <!-- Gradient Rounded Background -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M16,4h96c6.6,0 12,5.4 12,12v96c0,6.6 -5.4,12 -12,12H16c-6.6,0 -12,-5.4 -12,-12V16c0,-6.6 5.4,-12 12,-12z" />
+    <!-- PC Window Frame -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M24,30h48c2.2,0 4,1.8 4,4v34c0,2.2 -1.8,4 -4,4H24c-2.2,0 -4,-1.8 -4,-4V34c0,-2.2 1.8,-4 4,-4z" />
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M24,30h48c2.2,0 4,1.8 4,4v7H20v-7c0,-2.2 1.8,-4 4,-4z" />
+    <!-- Window Dots -->
+    <path android:fillColor="#EF4444" android:pathData="M26,34a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
+    <path android:fillColor="#FBBF24" android:pathData="M32,34a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
+    <path android:fillColor="#34D399" android:pathData="M38,34a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
+    <!-- Stand -->
+    <path android:fillColor="#475569" android:pathData="M44,72h8v8h-8z M36,80h24v4H36z" />
+    <!-- Smartphone Frame -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M76,46h28c2.2,0 4,1.8 4,4v42c0,2.2 -1.8,4 -4,4H76c-2.2,0 -4,-1.8 -4,-4V50c0,-2.2 1.8,-4 4,-4z" />
+    <!-- Phone Screen -->
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M75,52h30v32H75z" />
+    <!-- Multi-Path Turbo Lightning Bolt -->
+    <path
+        android:fillColor="#FACC15"
+        android:pathData="M66,44L52,60h10l-4,16 16,-18h-10l6,-14z" />
+</vector>
