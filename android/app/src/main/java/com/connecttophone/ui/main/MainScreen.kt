@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -130,11 +132,11 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             when (selectedTab) {
                 0 -> TransfersTab(
@@ -166,14 +168,17 @@ fun TransfersTab(
     context: Context,
     history: List<TransferHistoryItem>
 ) {
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         item {
             // Speed breakdown card
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Column(Modifier.padding(16.dp)) {
+                Column(Modifier.padding(12.dp)) {
                     Text("Multi-Path Bonded Status", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(Modifier.height(8.dp))
                     Row(
@@ -214,7 +219,7 @@ fun TransfersTab(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Column(Modifier.padding(16.dp)) {
+                Column(Modifier.padding(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -398,7 +403,10 @@ fun PcExplorerTab(
                 }
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 items(entries) { item ->
                     Card(
                         modifier = Modifier
@@ -452,7 +460,7 @@ fun ClipboardTab(
     onAutoSyncChange: (Boolean) -> Unit,
     history: List<String>
 ) {
-    Column {
+    Column(modifier = Modifier.fillMaxSize()) {
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             shape = RoundedCornerShape(12.dp)
@@ -473,7 +481,10 @@ fun ClipboardTab(
         Text("Recent Synced Clips", fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Spacer(Modifier.height(8.dp))
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             items(history) { clip ->
                 Card(
                     modifier = Modifier.fillMaxWidth().clickable {
@@ -497,309 +508,288 @@ fun ClipboardTab(
 @Composable
 fun RemoteControlTab(context: Context) {
     var textToSend by remember { mutableStateOf("") }
+    var showExtraHotkeys by remember { mutableStateOf(false) }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        // 1. REMOTE KEYBOARD & QUICK ACTIONS (Top Section)
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("Remote Keyboard & Hotkeys", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Spacer(Modifier.height(8.dp))
-
-                    // Type text to PC directly
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
-                            value = textToSend,
-                            onValueChange = { textToSend = it },
-                            placeholder = { Text("Type text to send to PC...", fontSize = 12.sp) },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                if (textToSend.isNotEmpty()) {
-                                    AppState.sendKeyboardKey(text = textToSend)
-                                    textToSend = ""
-                                    Toast.makeText(context, "Sent to PC!", Toast.LENGTH_SHORT).show()
-                                }
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        // TOP SECTION: COMPACT KEYBOARD, SHORTCUTS, MEDIA & POWER (Fixed at top, fits on screen)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                // Row 1: Text input to PC + Send button + Toggle Hotkeys
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = textToSend,
+                        onValueChange = { textToSend = it },
+                        placeholder = { Text("Type to PC...", fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f).height(46.dp),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Button(
+                        onClick = {
+                            if (textToSend.isNotEmpty()) {
+                                AppState.sendKeyboardKey(text = textToSend)
+                                textToSend = ""
+                                Toast.makeText(context, "Sent to PC!", Toast.LENGTH_SHORT).show()
                             }
-                        ) {
-                            Text("Send")
-                        }
+                        },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        modifier = Modifier.height(42.dp)
+                    ) {
+                        Text("Send", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
-
-                    Spacer(Modifier.height(10.dp))
-                    Text("System Shortcuts:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(6.dp))
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FilledTonalButton(onClick = { AppState.sendKeyboardKey(specialKey = "ALT_TAB") }, modifier = Modifier.weight(1f)) {
-                            Text("Alt+Tab", fontSize = 11.sp)
-                        }
-                        FilledTonalButton(onClick = { AppState.sendKeyboardKey(specialKey = "WIN_D") }, modifier = Modifier.weight(1f)) {
-                            Text("Win+D", fontSize = 11.sp)
-                        }
-                        FilledTonalButton(onClick = { AppState.sendKeyboardKey(specialKey = "F5") }, modifier = Modifier.weight(1f)) {
-                            Text("F5", fontSize = 11.sp)
-                        }
+                    IconButton(
+                        onClick = { showExtraHotkeys = !showExtraHotkeys },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Text(if (showExtraHotkeys) "▲" else "⌨️", fontSize = 16.sp)
                     }
+                }
 
-                    Spacer(Modifier.height(6.dp))
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FilledTonalButton(onClick = { AppState.sendKeyboardKey(specialKey = "COPY") }, modifier = Modifier.weight(1f)) {
-                            Text("Ctrl+C", fontSize = 11.sp)
-                        }
-                        FilledTonalButton(onClick = { AppState.sendKeyboardKey(specialKey = "PASTE") }, modifier = Modifier.weight(1f)) {
-                            Text("Ctrl+V", fontSize = 11.sp)
-                        }
-                        FilledTonalButton(onClick = { AppState.sendKeyboardKey(specialKey = "UNDO") }, modifier = Modifier.weight(1f)) {
-                            Text("Ctrl+Z", fontSize = 11.sp)
-                        }
-                    }
-
-                    Spacer(Modifier.height(6.dp))
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(onClick = { AppState.sendKeyboardKey(specialKey = "ENTER") }, modifier = Modifier.weight(1f)) {
-                            Text("Enter", fontSize = 11.sp)
-                        }
-                        OutlinedButton(onClick = { AppState.sendKeyboardKey(specialKey = "BACKSPACE") }, modifier = Modifier.weight(1f)) {
-                            Text("⌫ Back", fontSize = 11.sp)
-                        }
-                        OutlinedButton(onClick = { AppState.sendKeyboardKey(specialKey = "ESC") }, modifier = Modifier.weight(1f)) {
-                            Text("Esc", fontSize = 11.sp)
-                        }
-                        OutlinedButton(onClick = { AppState.sendKeyboardKey(specialKey = "SPACE") }, modifier = Modifier.weight(1f)) {
-                            Text("Space", fontSize = 11.sp)
+                // Row 2: Collapsible Quick Hotkeys
+                if (showExtraHotkeys) {
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            "Alt+Tab" to "ALT_TAB",
+                            "Win+D" to "WIN_D",
+                            "F5" to "F5",
+                            "Ctrl+C" to "COPY",
+                            "Ctrl+V" to "PASTE",
+                            "Ctrl+Z" to "UNDO",
+                            "Enter" to "ENTER",
+                            "⌫ Back" to "BACKSPACE",
+                            "Esc" to "ESC",
+                            "Space" to "SPACE"
+                        ).forEach { (label, key) ->
+                            FilledTonalButton(
+                                onClick = { AppState.sendKeyboardKey(specialKey = key) },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text(label, fontSize = 10.sp)
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        // 2. MEDIA & VOLUME CONTROLS
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("PC Media & Volume", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        IconButton(onClick = { AppState.sendMediaAction(2) }) {
-                            Text("⏮", fontSize = 20.sp)
+                Spacer(Modifier.height(4.dp))
+
+                // Row 3: Media & Quick Power Actions in ONE sleek row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        IconButton(onClick = { AppState.sendMediaAction(2) }, modifier = Modifier.size(32.dp)) {
+                            Text("⏮", fontSize = 15.sp)
                         }
-                        IconButton(onClick = { AppState.sendMediaAction(0) }) {
-                            Text("⏯", fontSize = 22.sp)
+                        IconButton(onClick = { AppState.sendMediaAction(0) }, modifier = Modifier.size(32.dp)) {
+                            Text("⏯", fontSize = 17.sp)
                         }
-                        IconButton(onClick = { AppState.sendMediaAction(1) }) {
-                            Text("⏭", fontSize = 20.sp)
+                        IconButton(onClick = { AppState.sendMediaAction(1) }, modifier = Modifier.size(32.dp)) {
+                            Text("⏭", fontSize = 15.sp)
                         }
-                        IconButton(onClick = { AppState.sendMediaAction(4) }) {
-                            Text("🔉", fontSize = 20.sp)
+                        IconButton(onClick = { AppState.sendMediaAction(4) }, modifier = Modifier.size(32.dp)) {
+                            Text("🔉", fontSize = 15.sp)
                         }
-                        IconButton(onClick = { AppState.sendMediaAction(3) }) {
-                            Text("🔊", fontSize = 20.sp)
+                        IconButton(onClick = { AppState.sendMediaAction(3) }, modifier = Modifier.size(32.dp)) {
+                            Text("🔊", fontSize = 15.sp)
                         }
-                        IconButton(onClick = { AppState.sendMediaAction(5) }) {
-                            Text("🔇", fontSize = 20.sp)
+                        IconButton(onClick = { AppState.sendMediaAction(5) }, modifier = Modifier.size(32.dp)) {
+                            Text("🔇", fontSize = 15.sp)
                         }
                     }
-                }
-            }
-        }
 
-        // 3. POWER & SECURITY ACTIONS
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("PC Power & Lock Actions", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Button(
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        FilledTonalButton(
                             onClick = {
                                 AppState.sendPowerAction(0)
                                 Toast.makeText(context, "Locking PC...", Toast.LENGTH_SHORT).show()
                             },
-                            modifier = Modifier.weight(1f)
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(30.dp)
                         ) {
-                            Text("🔒")
-                            Spacer(Modifier.width(6.dp))
-                            Text("Lock PC")
+                            Text("🔒 Lock", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                         OutlinedButton(
                             onClick = {
                                 AppState.sendPowerAction(1)
-                                Toast.makeText(context, "Putting PC to Sleep...", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Sleep...", Toast.LENGTH_SHORT).show()
                             },
-                            modifier = Modifier.weight(1f)
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(30.dp)
                         ) {
-                            Text("💤")
-                            Spacer(Modifier.width(6.dp))
-                            Text("Sleep")
+                            Text("💤", fontSize = 10.sp)
                         }
                     }
                 }
             }
         }
 
-        // 4. NATURAL THUMB TOUCHPAD (Aligned to Bottom for Comfort)
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(12.dp)
+        // BOTTOM THUMB ZONE: FULL-WIDTH TRACKPAD (weight 1f, no outer scroll!), CLICKS & HORIZONTAL WHEEL
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(6.dp)
             ) {
-                Column(Modifier.padding(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Thumb-Zone Touchpad", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("Tap = Left • Long = Right", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Spacer(Modifier.height(8.dp))
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Thumb-Zone Touchpad", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("Tap=Left • Long=Right", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
 
-                    // Full-width trackpad with right vertical scroll strip
-                    Row(Modifier.fillMaxWidth().height(240.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .background(Color(0xFF1E1E24), RoundedCornerShape(10.dp))
-                                .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onTap = {
-                                            AppState.sendMouseDelta(0, 0, leftClick = true)
-                                        },
-                                        onDoubleTap = {
-                                            AppState.sendMouseDelta(0, 0, leftClick = true)
-                                            AppState.sendMouseDelta(0, 0, leftClick = true)
-                                        },
-                                        onLongPress = {
-                                            AppState.sendMouseDelta(0, 0, rightClick = true)
-                                        }
-                                    )
-                                }
-                                .pointerInput(Unit) {
-                                    detectDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        AppState.sendMouseDelta(
-                                            (dragAmount.x * 1.6f).toInt(),
-                                            (dragAmount.y * 1.6f).toInt()
-                                        )
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("👆", fontSize = 28.sp)
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    "Natural Thumb Trackpad\nSwipe to glide cursor smoothly",
-                                    color = Color(0xFFA1A1AA),
-                                    fontSize = 12.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
+                Spacer(Modifier.height(4.dp))
 
-                        Spacer(Modifier.width(8.dp))
-
-                        // Vertical Scroll Wheel Strip
-                        Box(
-                            modifier = Modifier
-                                .width(46.dp)
-                                .fillMaxHeight()
-                                .background(Color(0xFF27272A), RoundedCornerShape(10.dp))
-                                .pointerInput(Unit) {
-                                    detectDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        val scroll = (-dragAmount.y * 14).toInt()
-                                        if (scroll != 0) {
-                                            AppState.sendMouseDelta(0, 0, wheelDelta = scroll)
-                                        }
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("▲", fontSize = 12.sp, color = Color(0xFFA1A1AA))
-                                Spacer(Modifier.height(6.dp))
-                                Text("↕", fontSize = 18.sp, color = Color(0xFF60A5FA), fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.height(6.dp))
-                                Text("▼", fontSize = 12.sp, color = Color(0xFFA1A1AA))
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(10.dp))
-
-                    // Left, Middle & Right Click buttons BELOW trackpad, ABOVE horizontal scroll
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { AppState.sendMouseDelta(0, 0, leftClick = true) },
-                            modifier = Modifier.weight(1.1f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("Left Click", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        FilledTonalButton(
-                            onClick = { AppState.sendMouseDelta(0, 0, middleClick = true) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("🔘 Middle", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        Button(
-                            onClick = { AppState.sendMouseDelta(0, 0, rightClick = true) },
-                            modifier = Modifier.weight(1.1f),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                        ) {
-                            Text("Right Click", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // Horizontal Scroll Wheel Strip BELOW click buttons
+                // Full-width Touchpad + Dedicated Vertical Scroll Strip
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    // Precision Trackpad Area
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(42.dp)
-                            .background(Color(0xFF27272A), RoundedCornerShape(8.dp))
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(Color(0xFF1E1E24), RoundedCornerShape(10.dp))
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onTap = { AppState.sendMouseDelta(0, 0, leftClick = true) },
+                                    onDoubleTap = {
+                                        AppState.sendMouseDelta(0, 0, leftClick = true)
+                                        AppState.sendMouseDelta(0, 0, leftClick = true)
+                                    },
+                                    onLongPress = { AppState.sendMouseDelta(0, 0, rightClick = true) }
+                                )
+                            }
                             .pointerInput(Unit) {
                                 detectDragGestures { change, dragAmount ->
                                     change.consume()
-                                    val scroll = (dragAmount.x * 14).toInt()
+                                    AppState.sendMouseDelta(
+                                        (dragAmount.x * 1.6f).toInt(),
+                                        (dragAmount.y * 1.6f).toInt()
+                                    )
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("👆", fontSize = 28.sp)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Precision Thumb Trackpad\nGlide cursor smoothly",
+                                color = Color(0xFFA1A1AA),
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.width(6.dp))
+
+                    // Dedicated Vertical Scroll Strip (No outer scroll competition!)
+                    Box(
+                        modifier = Modifier
+                            .width(42.dp)
+                            .fillMaxHeight()
+                            .background(Color(0xFF27272A), RoundedCornerShape(10.dp))
+                            .pointerInput(Unit) {
+                                detectDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    val scroll = (-dragAmount.y * 14).toInt()
                                     if (scroll != 0) {
-                                        AppState.sendMouseDelta(0, 0, wheelDeltaX = scroll)
+                                        AppState.sendMouseDelta(0, 0, wheelDelta = scroll)
                                     }
                                 }
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("◀  Horizontal Scroll Wheel  ▶", fontSize = 12.sp, color = Color(0xFF93C5FD), fontWeight = FontWeight.SemiBold)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("▲", fontSize = 11.sp, color = Color(0xFFA1A1AA))
+                            Spacer(Modifier.height(4.dp))
+                            Text("↕", fontSize = 16.sp, color = Color(0xFF60A5FA), fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(4.dp))
+                            Text("▼", fontSize = 11.sp, color = Color(0xFFA1A1AA))
+                        }
                     }
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                // Left, Middle & Right Click buttons BELOW trackpad, ABOVE horizontal scroll
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Button(
+                        onClick = { AppState.sendMouseDelta(0, 0, leftClick = true) },
+                        modifier = Modifier.weight(1.1f).fillMaxHeight(),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Left Click", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    FilledTonalButton(
+                        onClick = { AppState.sendMouseDelta(0, 0, middleClick = true) },
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("🔘 Middle", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    Button(
+                        onClick = { AppState.sendMouseDelta(0, 0, rightClick = true) },
+                        modifier = Modifier.weight(1.1f).fillMaxHeight(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Text("Right Click", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                // Horizontal Scroll Wheel Strip at the very bottom
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(36.dp)
+                        .background(Color(0xFF27272A), RoundedCornerShape(8.dp))
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val scroll = (dragAmount.x * 14).toInt()
+                                if (scroll != 0) {
+                                    AppState.sendMouseDelta(0, 0, wheelDeltaX = scroll)
+                                }
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("◀  Horizontal Scroll Wheel  ▶", fontSize = 11.sp, color = Color(0xFF93C5FD), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -817,14 +807,17 @@ fun StorageTab(context: Context) {
         cachedFiles = CacheManager.getCachedFiles(context, selectedFilter)
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         // 1. Storage Overview Card
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Column(Modifier.padding(16.dp)) {
+                Column(Modifier.padding(12.dp)) {
                     Text("Storage & Cache Manager", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Spacer(Modifier.height(4.dp))
                     Text(
