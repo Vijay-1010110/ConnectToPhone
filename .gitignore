@@ -1,6 +1,8 @@
 # Build outputs & caches
 bin/
 obj/
+publish/
+desktop/publish/
 *.user
 *.suo
 .vs/
@@ -15,6 +17,9 @@ android/local.properties
 android/.cxx/
 *.apk
 *.aab
+!dist/*.apk
+!dist/*.zip
+
 
 # Temp scratch screenshots
 scratch*.png
