@@ -4,6 +4,10 @@
     <ProjectReference Include="..\ConnectToPhone.Core\ConnectToPhone.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="InTheHand.Net.Bluetooth" Version="4.2.5" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

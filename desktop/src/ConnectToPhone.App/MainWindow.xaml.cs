@@ -12,6 +12,7 @@ using ConnectToPhone.Core.Protocol;
 using ConnectToPhone.Core.Protocol.Models;
 using ConnectToPhone.Explorer;
 using ConnectToPhone.Transports;
+using ConnectToPhone.Transports.Bluetooth;
 using ConnectToPhone.Transports.Discovery;
 using ConnectToPhone.Transports.Sockets;
 using ConnectToPhone.Transports.Usb;
@@ -25,6 +26,7 @@ public partial class MainWindow : Window
     private ITransport? _activeTransport;
     private TcpServer? _tcpServer;
     private UdpDiscoveryBeacon? _udpBeacon;
+    private BluetoothBridge? _btBridge;
     private readonly WindowsFileSystemHost _fsHost = new();
     private readonly DeviceSecurityManager _security = new();
     private readonly CacheManager _cacheManager = new();
@@ -71,52 +73,126 @@ public partial class MainWindow : Window
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        // 1. Hook clipboard listener to the Win32 HWND
-        IntPtr hwnd = new WindowInteropHelper(this).Handle;
-        _clipboardService = new ClipboardService(Dispatcher);
-        _clipboardService.Initialize(hwnd);
-        _clipboardService.LocalClipboardCopied += OnLocalClipboardCopied;
-
-        // 2. Initialize status & PIN
-        _activityLog.Add("[System] Initialized ConnectToPhone Core Engine.");
-        UpdateTaskbarProgress(0, TaskbarItemProgressState.None);
-        TxtPin.Text = _security.CurrentSessionPin;
-        RefreshPairedDevicesList();
-
-        // 3. Start local TCP server (Port 42424) so Phone can connect over Wi-Fi LAN
-        StartTcpServer();
-
-        // 4. Start zero-touch UDP discovery
-        StartUdpDiscovery();
-
-        // 5. Connect to phone over USB bridge automatically in continuous loop
-        _autoConnectCts = new CancellationTokenSource();
-        _ = AutoConnectUsbLoopAsync(_autoConnectCts.Token);
-
-        // 6. Initialize storage & cache
-        RefreshCacheView();
-        Task.Run(async () =>
+        try
         {
-            while (!_autoConnectCts.Token.IsCancellationRequested)
+            File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[MainWindow] MainWindow_Loaded start at {DateTime.Now}\n");
+
+            // 1. Hook clipboard listener to the Win32 HWND
+            IntPtr hwnd = new WindowInteropHelper(this).Handle;
+            _clipboardService = new ClipboardService(Dispatcher);
+            _clipboardService.Initialize(hwnd);
+            _clipboardService.LocalClipboardCopied += OnLocalClipboardCopied;
+
+            // 2. Initialize status & PIN
+            _activityLog.Add("[System] Initialized ConnectToPhone Core Engine.");
+            UpdateTaskbarProgress(0, TaskbarItemProgressState.None);
+            TxtPin.Text = _security.CurrentSessionPin;
+            RefreshPairedDevicesList();
+
+            // 3. Start local TCP server (Port 42424) so Phone can connect over Wi-Fi LAN
+            StartTcpServer();
+
+            // 4. Start zero-touch UDP discovery
+            StartUdpDiscovery();
+
+            // 5. Start Bluetooth RFCOMM listener for native paired phone connectivity
+            StartBluetoothServer();
+
+            // 6. Connect to phone over USB bridge or Wi-Fi/BT automatically in continuous loop
+            _autoConnectCts = new CancellationTokenSource();
+            _ = AutoConnectUsbLoopAsync(_autoConnectCts.Token);
+
+            // 7. Initialize storage & cache
+            RefreshCacheView();
+            Task.Run(async () =>
             {
-                _cacheManager.RunPeriodicCleanup();
-                await Task.Delay(TimeSpan.FromHours(6), _autoConnectCts.Token);
-            }
-        });
+                while (!_autoConnectCts.Token.IsCancellationRequested)
+                {
+                    _cacheManager.RunPeriodicCleanup();
+                    await Task.Delay(TimeSpan.FromHours(6), _autoConnectCts.Token);
+                }
+            });
+
+            File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[MainWindow] MainWindow_Loaded finish at {DateTime.Now}\n");
+        }
+        catch (Exception ex)
+        {
+            File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[MainWindow] MainWindow_Loaded Exception: {ex}\n");
+        }
     }
 
     private void RefreshPairedDevicesList()
     {
-        _pairedDevices.Clear();
-        foreach (var d in _security.GetAllDevices())
+        try
         {
-            _pairedDevices.Add(new PairedDeviceDisplay
+            _pairedDevices.Clear();
+            foreach (var d in _security.GetAllDevices())
             {
-                DeviceName = d.DeviceName,
-                DeviceId = d.DeviceId,
-                DeviceType = d.DeviceType.ToString(),
-                TrustStatus = d.IsTrusted ? "✓ Trusted" : "Pending"
-            });
+                _pairedDevices.Add(new PairedDeviceDisplay
+                {
+                    DeviceName = d.DeviceName,
+                    DeviceId = d.DeviceId,
+                    DeviceType = d.DeviceType.ToString(),
+                    TrustStatus = d.IsTrusted ? "✓ Trusted" : "Pending"
+                });
+            }
+
+            if (_btBridge != null && _btBridge.IsSupported)
+            {
+                foreach (var bt in _btBridge.GetPairedDevices())
+                {
+                    try
+                    {
+                        string name = bt.DeviceName ?? "Bluetooth Device";
+                        string addr = bt.DeviceAddress?.ToString() ?? "";
+                        bool isConnected = false;
+                        try { isConnected = bt.Connected; } catch { }
+
+                        if (!_pairedDevices.Any(p => p.DeviceName.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            _pairedDevices.Add(new PairedDeviceDisplay
+                            {
+                                DeviceName = name,
+                                DeviceId = addr,
+                                DeviceType = "Bluetooth",
+                                TrustStatus = isConnected ? "⚡ Connected" : "✓ Paired"
+                            });
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            File.AppendAllText("app_lifecycle.log", $"[MainWindow] RefreshPairedDevicesList Exception: {ex}\n");
+        }
+    }
+
+    private void StartBluetoothServer()
+    {
+        try
+        {
+            _btBridge = new BluetoothBridge();
+            if (_btBridge.IsSupported)
+            {
+                _btBridge.ClientConnected += transport =>
+                {
+                    AttachTransport(transport, "Bluetooth");
+                    _ = SendHandshakeAndRootReqAsync(transport);
+                };
+                _btBridge.StartListener();
+                _activityLog.Insert(0, "[Bluetooth] RFCOMM Server listening for paired devices.");
+                RefreshPairedDevicesList();
+            }
+            else
+            {
+                _activityLog.Insert(0, "[Bluetooth] Radio not active or supported on this system.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _activityLog.Insert(0, $"[Bluetooth] Note: {ex.Message}");
         }
     }
 
@@ -196,16 +272,33 @@ public partial class MainWindow : Window
                             var wifiTransport = await TcpServer.ConnectAsync(ip, 42424, ctsTimeout.Token);
                             if (wifiTransport != null && wifiTransport.IsConnected)
                             {
-                                Dispatcher.Invoke(() =>
-                                {
-                                    AttachTransport(wifiTransport, $"Wi-Fi ({ip})");
-                                });
-
+                                AttachTransport(wifiTransport, $"Wi-Fi ({ip})");
                                 await SendHandshakeAndRootReqAsync(wifiTransport);
                                 break;
                             }
                         }
                         catch {}
+                    }
+
+                    // 3. Try paired Bluetooth devices
+                    if (_activeTransport == null && _btBridge != null && _btBridge.IsSupported)
+                    {
+                        var pairedBt = _btBridge.GetPairedDevices();
+                        foreach (var dev in pairedBt)
+                        {
+                            try
+                            {
+                                using var ctsTimeout = new CancellationTokenSource(1200);
+                                var btTransport = await _btBridge.ConnectToDeviceAsync(dev, ctsTimeout.Token);
+                                if (btTransport != null && btTransport.IsConnected)
+                                {
+                                    AttachTransport(btTransport, $"Bluetooth ({dev.DeviceName})");
+                                    await SendHandshakeAndRootReqAsync(btTransport);
+                                    break;
+                                }
+                            }
+                            catch { }
+                        }
                     }
                 }
             }
@@ -222,7 +315,7 @@ public partial class MainWindow : Window
             DeviceId = Environment.MachineName,
             DeviceName = $"{Environment.MachineName} (Windows)",
             DeviceType = DeviceType.Windows,
-            SupportedTransports = TransportType.UsbAdb | TransportType.WifiLan
+            SupportedTransports = TransportType.UsbAdb | TransportType.WifiLan | TransportType.BluetoothRfcomm
         };
 
         await transport.SendFrameAsync(new BinaryFrame(
@@ -242,25 +335,38 @@ public partial class MainWindow : Window
         _activeTransport.Disconnected += OnTransportDisconnected;
         _activeTransport.StartReceiving();
 
-        StatusDot.Fill = new SolidColorBrush(Color.FromRgb(16, 185, 129));
-        TxtStatus.Text = $"Connected over {label} ⚡";
-        TxtDeviceName.Text = $"Connected Device ({label})";
-        if (label.Contains("USB", StringComparison.OrdinalIgnoreCase))
+        Dispatcher.Invoke(() =>
         {
-            TxtUsbBadge.Text = "⚡ USB (Active Link)";
-            TxtWifiBadge.Text = "💤 Wi-Fi (Standby / Deep Sleep)";
-        }
-        else
-        {
-            TxtWifiBadge.Text = "📶 Wi-Fi (Active Link)";
-            TxtUsbBadge.Text = "💤 USB (Standby)";
-        }
-        TxtBondedSpeed.Text = "Idle / Energy Saver (0% CPU)";
-        _activityLog.Insert(0, $"[Transport] Single-pipe established via {label}. Secondary channels in low-power sleep.");
+            StatusDot.Fill = new SolidColorBrush(Color.FromRgb(16, 185, 129));
+            TxtStatus.Text = $"Connected over {label} ⚡";
+            TxtDeviceName.Text = $"Connected Device ({label})";
+            if (label.Contains("USB", StringComparison.OrdinalIgnoreCase))
+            {
+                TxtUsbBadge.Text = "⚡ USB (Active Link)";
+                TxtWifiBadge.Text = "💤 Wi-Fi (Standby)";
+                TxtBtBadge.Text = "💤 Bluetooth (Standby)";
+            }
+            else if (label.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase))
+            {
+                TxtBtBadge.Text = "⚡ Bluetooth (Active Link)";
+                TxtUsbBadge.Text = "💤 USB (Standby)";
+                TxtWifiBadge.Text = "💤 Wi-Fi (Standby)";
+            }
+            else
+            {
+                TxtWifiBadge.Text = "📶 Wi-Fi (Active Link)";
+                TxtUsbBadge.Text = "💤 USB (Standby)";
+                TxtBtBadge.Text = "💤 Bluetooth (Standby)";
+            }
+            TxtBondedSpeed.Text = "Idle / Energy Saver (0% CPU)";
+            _activityLog.Insert(0, $"[Transport] Single-pipe established via {label}. Secondary channels in low-power sleep.");
+            try { File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[AttachTransport] Established: {label} at {DateTime.Now}\n"); } catch {}
+        });
     }
 
     private async Task OnFrameReceivedFromPhone(ITransport transport, BinaryFrame frame)
     {
+        try { File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[Frame] Received Type={frame.Type} (0x{(byte)frame.Type:X2}), Length={frame.Payload.Length} at {DateTime.Now:HH:mm:ss.fff}\n"); } catch {}
         switch (frame.Type)
         {
             case FrameType.HandshakeSyn:
@@ -500,6 +606,7 @@ public partial class MainWindow : Window
                 TxtStatus.Text = "Disconnected";
                 TxtUsbBadge.Text = "USB: Disconnected";
                 TxtWifiBadge.Text = "Wi-Fi: Ready";
+                TxtBtBadge.Text = "Bluetooth: Ready";
                 TxtBondedSpeed.Text = "Idle";
                 _activityLog.Insert(0, "[Transport] Pipe disconnected. Auto-connector standing by...");
             }
@@ -537,6 +644,7 @@ public partial class MainWindow : Window
                 : payload.TextContent ?? "";
 
             _clipboardLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Copied: \"{preview}\"");
+            try { File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[Clipboard] Local copied: '{preview}', Forwarding={_activeTransport != null && _activeTransport.IsConnected}\n"); } catch {}
 
             // Forward to phone
             if (ChkAutoClip?.IsChecked == true && _activeTransport != null && _activeTransport.IsConnected)
@@ -913,8 +1021,15 @@ public partial class MainWindow : Window
         BtnOpenDownloads_Click(sender, e);
     }
 
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[MainWindow] OnClosing at {DateTime.Now}. StackTrace: {Environment.StackTrace}\n");
+        base.OnClosing(e);
+    }
+
     protected override void OnClosed(EventArgs e)
     {
+        File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[MainWindow] OnClosed at {DateTime.Now}\n");
         base.OnClosed(e);
         _autoConnectCts?.Cancel();
         _clipboardService?.Dispose();

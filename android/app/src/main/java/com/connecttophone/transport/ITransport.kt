@@ -9,6 +9,7 @@ interface ITransport : AutoCloseable {
     val currentSpeedBytesPerSec: Double
 
     suspend fun sendFrame(frame: BinaryFrame)
+    fun startReceiving()
 
     var onFrameReceived: ((ITransport, BinaryFrame) -> Unit)?
     var onDisconnected: ((ITransport) -> Unit)?

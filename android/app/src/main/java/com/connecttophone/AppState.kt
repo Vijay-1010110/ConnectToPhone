@@ -42,6 +42,7 @@ object AppState {
     var currentPcPath by mutableStateOf("/")
     var isQueryingPcFiles by mutableStateOf(false)
     val transferHistory = mutableStateListOf<TransferHistoryItem>()
+    val clipboardHistory = mutableStateListOf<String>()
 
     var isConnected by mutableStateOf(false)
     var connectedDeviceName by mutableStateOf("Searching...")

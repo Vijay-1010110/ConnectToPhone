@@ -44,12 +44,7 @@ fun MainScreen(
 
     // Clipboard state
     var autoClipboardSync by remember { mutableStateOf(true) }
-    val clipboardHistory = remember {
-        mutableStateListOf(
-            "https://github.com/connecttophone/core",
-            "git clone https://github.com/project/connect.git"
-        )
-    }
+
 
     Scaffold(
         topBar = {
@@ -154,7 +149,7 @@ fun MainScreen(
                     context = context,
                     autoSync = autoClipboardSync,
                     onAutoSyncChange = { autoClipboardSync = it },
-                    history = clipboardHistory
+                    history = AppState.clipboardHistory
                 )
                 3 -> RemoteControlTab(context = context)
                 4 -> StorageTab(context = context)
@@ -481,23 +476,52 @@ fun ClipboardTab(
         Text("Recent Synced Clips", fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Spacer(Modifier.height(8.dp))
 
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(history) { clip ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable {
-                        Toast.makeText(context, "Copied to Phone Clipboard!", Toast.LENGTH_SHORT).show()
-                    }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+        if (history.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("📋", fontSize = 32.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "No clips synced yet",
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Copy text on PC or Phone to sync automatically",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(history) { clip ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            try {
+                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                cm?.setPrimaryClip(android.content.ClipData.newPlainText("text", clip))
+                            } catch (_: Exception) {}
+                            Toast.makeText(context, "Copied to Phone Clipboard!", Toast.LENGTH_SHORT).show()
+                        }
                     ) {
-                        Text("📋", fontSize = 16.sp)
-                        Spacer(Modifier.width(12.dp))
-                        Text(clip, fontSize = 13.sp, maxLines = 2, modifier = Modifier.weight(1f))
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("📋", fontSize = 16.sp)
+                            Spacer(Modifier.width(12.dp))
+                            Text(clip, fontSize = 13.sp, maxLines = 2, modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }

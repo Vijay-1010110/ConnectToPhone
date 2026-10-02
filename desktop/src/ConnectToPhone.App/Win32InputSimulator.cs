@@ -50,33 +50,52 @@ public static class Win32InputSimulator
     [DllImport("Powrprof.dll", SetLastError = true)]
     private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
 
+    private static bool _wasLeftDown;
+    private static bool _wasRightDown;
+
     public static void HandleMouse(MouseControlPayload p)
     {
+        try { System.IO.File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[Input] Mouse dx={p.DeltaX}, dy={p.DeltaY}, left={p.LeftClick}, right={p.RightClick}, mid={p.MiddleClick}, w={p.WheelDelta}\n"); } catch {}
+
         // 1. Movement
         if (p.DeltaX != 0 || p.DeltaY != 0)
         {
             mouse_event(MOUSEEVENTF_MOVE, p.DeltaX, p.DeltaY, 0, UIntPtr.Zero);
         }
 
-        // 2. Clicks
+        // 2. Clicks & Holds
         if (p.LeftClick)
         {
             mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
             mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+            _wasLeftDown = false;
         }
-        else if (p.LeftButtonDown)
+        else if (p.LeftButtonDown && !_wasLeftDown)
         {
             mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+            _wasLeftDown = true;
+        }
+        else if (!p.LeftButtonDown && _wasLeftDown)
+        {
+            mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+            _wasLeftDown = false;
         }
 
         if (p.RightClick)
         {
             mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
             mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+            _wasRightDown = false;
         }
-        else if (p.RightButtonDown)
+        else if (p.RightButtonDown && !_wasRightDown)
         {
             mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
+            _wasRightDown = true;
+        }
+        else if (!p.RightButtonDown && _wasRightDown)
+        {
+            mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+            _wasRightDown = false;
         }
 
         if (p.MiddleClick)
@@ -99,6 +118,8 @@ public static class Win32InputSimulator
 
     public static void HandleKeyboard(KeyboardControlPayload p)
     {
+        try { System.IO.File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[Input] Keyboard text='{p.Text}', key='{p.SpecialKey}'\n"); } catch {}
+
         // 1. Special Keys & Hotkeys
         if (!string.IsNullOrEmpty(p.SpecialKey))
         {

@@ -1,5 +1,6 @@
 package com.connecttophone.transport
 
+import android.bluetooth.BluetoothSocket
 import android.util.Log
 import com.connecttophone.protocol.BinaryFrame
 import com.connecttophone.protocol.FrameType
@@ -8,23 +9,22 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.DataInputStream
-import java.io.EOFException
 import java.io.OutputStream
-import java.net.Socket
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 import java.util.zip.CRC32
 
-class TcpSocketTransport(
-    private val socket: Socket,
-    override val type: Long = TransportType.WIFI_LAN,
-    override val channelId: String = "tcp_${UUID.randomUUID()}"
+class BluetoothRfcommTransport(
+    private val socket: BluetoothSocket,
+    override val channelId: String = "bt_${UUID.randomUUID()}"
 ) : ITransport {
 
-    private val dataIn = DataInputStream(socket.getInputStream())
-    private val outputStream: OutputStream = socket.getOutputStream()
+    override val type: Long = TransportType.BLUETOOTH_RFCOMM
+
+    private val dataIn = DataInputStream(socket.inputStream)
+    private val outputStream: OutputStream = socket.outputStream
     private val writeMutex = Mutex()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -34,17 +34,11 @@ class TcpSocketTransport(
     private var isDisposed = false
     private var isReceiving = false
 
-    override val isConnected: Boolean get() = !isDisposed && socket.isConnected && !socket.isClosed
+    override val isConnected: Boolean get() = !isDisposed && socket.isConnected
     override val currentSpeedBytesPerSec: Double get() = calculatedSpeed
 
     override var onFrameReceived: ((ITransport, BinaryFrame) -> Unit)? = null
     override var onDisconnected: ((ITransport) -> Unit)? = null
-
-    init {
-        try {
-            socket.tcpNoDelay = true
-        } catch (_: Exception) {}
-    }
 
     override fun startReceiving() {
         if (isReceiving || isDisposed) return
@@ -83,7 +77,6 @@ class TcpSocketTransport(
 
                 val magic = ((headerBuffer[0].toInt() and 0xFF) shl 8) or (headerBuffer[1].toInt() and 0xFF)
                 if (magic != (BinaryFrame.MAGIC_MARKER.toInt() and 0xFFFF)) {
-                    // Out-of-sync: scan byte-by-byte for magic
                     var window = magic
                     val targetMagic = BinaryFrame.MAGIC_MARKER.toInt() and 0xFFFF
                     while (isActive && window != targetMagic) {
@@ -106,7 +99,7 @@ class TcpSocketTransport(
                 val payloadLength = headerBb.int
 
                 if (payloadLength < 0 || payloadLength > BinaryFrame.MAX_PAYLOAD_SIZE) {
-                    Log.e("ConnectToPhone", "Payload length $payloadLength out of bounds")
+                    Log.e("ConnectToPhone", "[Bluetooth] Payload length $payloadLength out of bounds")
                     break
                 }
 
@@ -133,11 +126,11 @@ class TcpSocketTransport(
                 val computedCrc = (crc.value and 0xFFFFFFFFL).toInt()
 
                 if (expectedCrc != computedCrc) {
-                    Log.w("ConnectToPhone", "CRC mismatch: expected $expectedCrc, got $computedCrc")
+                    Log.w("ConnectToPhone", "[Bluetooth] CRC mismatch")
                     continue
                 }
 
-                // 5. Dispatch valid frame
+                // 5. Dispatch frame
                 val frame = BinaryFrame(
                     version = version,
                     type = type,
@@ -146,15 +139,12 @@ class TcpSocketTransport(
                 )
 
                 try {
-                    onFrameReceived?.invoke(this@TcpSocketTransport, frame)
+                    onFrameReceived?.invoke(this@BluetoothRfcommTransport, frame)
                 } catch (e: Exception) {
-                    Log.e("ConnectToPhone", "Error in onFrameReceived: ${e.message}", e)
+                    Log.e("ConnectToPhone", "[Bluetooth] Error handling frame: ${e.message}", e)
                 }
             }
-        } catch (_: EOFException) {
-            // Clean socket close
-        } catch (e: Exception) {
-            Log.d("ConnectToPhone", "Socket read error: ${e.message}")
+        } catch (_: Exception) {
         } finally {
             close()
         }
@@ -166,7 +156,7 @@ class TcpSocketTransport(
         val elapsed = now - lastSpeedCheckTime
         if (elapsed >= 500) {
             val bytes = bytesInWindow.getAndSet(0)
-            calculatedSpeed = (bytes.toDouble() / elapsed.toDouble()) * 1000.0
+            calculatedSpeed = (bytes.toDouble() / elapsed) * 1000.0
             lastSpeedCheckTime = now
         }
     }
@@ -174,14 +164,10 @@ class TcpSocketTransport(
     override fun close() {
         if (isDisposed) return
         isDisposed = true
-
+        scope.cancel()
         try {
-            scope.cancel()
             socket.close()
         } catch (_: Exception) {}
-
-        try {
-            onDisconnected?.invoke(this)
-        } catch (_: Exception) {}
+        onDisconnected?.invoke(this)
     }
 }

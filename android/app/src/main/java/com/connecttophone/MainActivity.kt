@@ -1,5 +1,8 @@
 package com.connecttophone
 
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothServerSocket
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -26,6 +29,7 @@ import com.connecttophone.explorer.AndroidFileSystemHost
 import com.connecttophone.protocol.*
 import com.connecttophone.service.TransferForegroundService
 import com.connecttophone.theme.ConnectToPhoneTheme
+import com.connecttophone.transport.BluetoothRfcommTransport
 import com.connecttophone.transport.ITransport
 import com.connecttophone.transport.TcpServer
 import com.connecttophone.transport.TcpSocketTransport
@@ -36,12 +40,15 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 class MainActivity : ComponentActivity() {
 
     private var tcpServer: TcpServer? = null
     private var udpBeacon: UdpDiscoveryBeacon? = null
+    private var btServerSocket: BluetoothServerSocket? = null
+    private val SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
     private var clipboardService: ClipboardSyncService? = null
     private val fsHost = AndroidFileSystemHost()
     private val activeTransports = ConcurrentHashMap<String, ITransport>()
@@ -95,12 +102,22 @@ class MainActivity : ComponentActivity() {
             probeAndConnect(deviceId, deviceName)
         }
 
-        // 5. Start background auto-connect loop (USB + Wi-Fi)
+        // 5. Start background auto-connect loop (USB + Wi-Fi + Bluetooth)
         startAutoConnectLoop(deviceId, deviceName)
 
-        // 6. Start Clipboard auto-sync
+        // 6. Start Bluetooth RFCOMM listener for incoming paired PC connections
+        startBluetoothListener()
+
+        // 7. Start Clipboard auto-sync
         clipboardService = ClipboardSyncService(this).apply {
             onLocalClipboardChanged = { payload ->
+                payload.text?.let { text ->
+                    runOnUiThread {
+                        if (!AppState.clipboardHistory.contains(text)) {
+                            AppState.clipboardHistory.add(0, text)
+                        }
+                    }
+                }
                 broadcastFrame(BinaryFrame(
                     type = FrameType.CLIPBOARD_SYNC,
                     sessionId = activeSessionId,
@@ -148,6 +165,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun startBluetoothListener() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val btAdapter = (getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+                    ?: BluetoothAdapter.getDefaultAdapter()
+                if (btAdapter != null && btAdapter.isEnabled) {
+                    btServerSocket = btAdapter.listenUsingInsecureRfcommWithServiceRecord("ConnectToWindow", SPP_UUID)
+                    while (isActive) {
+                        val socket = btServerSocket?.accept() ?: break
+                        val transport = BluetoothRfcommTransport(socket)
+                        setupTransportHandlers(transport)
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
     private fun probeAndConnect(deviceId: String, deviceName: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             if (AppState.isConnected && AppState.activeTransportInstance?.isConnected == true) return@launch
@@ -176,6 +210,27 @@ class MainActivity : ComponentActivity() {
                     }
                 } catch (_: Exception) {}
             }
+
+            // 3. Try paired Bluetooth devices
+            try {
+                val btAdapter = (getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+                    ?: BluetoothAdapter.getDefaultAdapter()
+                if (btAdapter != null && btAdapter.isEnabled) {
+                    val paired = btAdapter.bondedDevices
+                    for (dev in paired) {
+                        try {
+                            val socket = dev.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+                            socket.connect()
+                            if (socket.isConnected) {
+                                val transport = BluetoothRfcommTransport(socket)
+                                setupTransportHandlers(transport)
+                                sendHandshakeSyn(transport, deviceId, deviceName)
+                                return@launch
+                            }
+                        } catch (_: Exception) {}
+                    }
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -184,7 +239,7 @@ class MainActivity : ComponentActivity() {
             deviceId = deviceId,
             deviceName = deviceName,
             deviceType = DeviceType.ANDROID,
-            supportedTransports = TransportType.USB_ADB or TransportType.WIFI_LAN
+            supportedTransports = TransportType.USB_ADB or TransportType.WIFI_LAN or TransportType.BLUETOOTH_RFCOMM
         )
         transport.sendFrame(BinaryFrame(
             type = FrameType.HANDSHAKE_SYN,
@@ -281,22 +336,30 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun setupTransportHandlers(transport: TcpSocketTransport) {
+    private fun setupTransportHandlers(transport: ITransport) {
         activeTransports[transport.channelId] = transport
         AppState.activeTransportInstance = transport
         AppState.isConnected = true
 
         runOnUiThread {
-            if (transport.type == TransportType.USB_ADB) {
-                AppState.activeProtocolName = "USB ⚡"
-                AppState.standbyProtocols = "Wi-Fi Standby 💤"
-                AppState.usbSpeedMb = 140.0
-                AppState.currentSpeedMb = 140.0
-            } else {
-                AppState.activeProtocolName = "Wi-Fi 📶"
-                AppState.standbyProtocols = "USB Standby 💤"
-                AppState.wifiSpeedMb = 85.0
-                AppState.currentSpeedMb = 85.0
+            when (transport.type) {
+                TransportType.USB_ADB -> {
+                    AppState.activeProtocolName = "USB ⚡"
+                    AppState.standbyProtocols = "Wi-Fi & Bluetooth Standby 💤"
+                    AppState.usbSpeedMb = 140.0
+                    AppState.currentSpeedMb = 140.0
+                }
+                TransportType.BLUETOOTH_RFCOMM -> {
+                    AppState.activeProtocolName = "Bluetooth ⚡"
+                    AppState.standbyProtocols = "Wi-Fi & USB Standby 💤"
+                    AppState.currentSpeedMb = 3.0
+                }
+                else -> {
+                    AppState.activeProtocolName = "Wi-Fi 📶"
+                    AppState.standbyProtocols = "USB & Bluetooth Standby 💤"
+                    AppState.wifiSpeedMb = 85.0
+                    AppState.currentSpeedMb = 85.0
+                }
             }
         }
 
@@ -386,6 +449,13 @@ class MainActivity : ComponentActivity() {
             FrameType.CLIPBOARD_SYNC -> {
                 val payload = ClipboardPayload.fromJson(String(frame.payload, Charsets.UTF_8))
                 clipboardService?.setRemoteClipboard(payload)
+                payload.text?.let { text ->
+                    runOnUiThread {
+                        if (!AppState.clipboardHistory.contains(text)) {
+                            AppState.clipboardHistory.add(0, text)
+                        }
+                    }
+                }
                 runOnUiThread {
                     com.connecttophone.cache.CacheManager.playNotificationSound(this@MainActivity)
                     Toast.makeText(this@MainActivity, "Clipboard synced from PC!", Toast.LENGTH_SHORT).show()
@@ -529,6 +599,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        try { btServerSocket?.close() } catch (_: Exception) {}
         tcpServer?.close()
         udpBeacon?.close()
         clipboardService?.stopListening()

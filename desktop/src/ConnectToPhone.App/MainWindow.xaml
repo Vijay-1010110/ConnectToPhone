@@ -141,6 +141,9 @@
                     <Border Background="#1E293B" BorderBrush="#10B981" BorderThickness="1" CornerRadius="8" Padding="12,6" Margin="0,0,8,0">
                         <TextBlock x:Name="TxtWifiBadge" Text="Wi-Fi: Ready" FontSize="12" FontWeight="Bold" Foreground="#34D399"/>
                     </Border>
+                    <Border Background="#1E293B" BorderBrush="#38BDF8" BorderThickness="1" CornerRadius="8" Padding="12,6" Margin="0,0,8,0">
+                        <TextBlock x:Name="TxtBtBadge" Text="Bluetooth: Ready" FontSize="12" FontWeight="Bold" Foreground="#38BDF8"/>
+                    </Border>
                     <Border Background="#2E1065" BorderBrush="#A855F7" BorderThickness="1" CornerRadius="8" Padding="12,6">
                         <TextBlock x:Name="TxtBondedSpeed" Text="⚡ Bonded: Ready" FontSize="12" FontWeight="Bold" Foreground="#C084FC"/>
                     </Border>

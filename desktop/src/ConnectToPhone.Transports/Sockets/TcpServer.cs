@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using ConnectToPhone.Core.Protocol;
@@ -34,19 +35,31 @@ public sealed class TcpServer : IAsyncDisposable
 
     private async Task AcceptLoopAsync()
     {
-        try
+        while (!_cts.Token.IsCancellationRequested)
         {
-            while (!_cts.Token.IsCancellationRequested)
+            try
             {
                 Socket socket = await _listener.AcceptSocketAsync(_cts.Token).ConfigureAwait(false);
                 var transport = new TcpSocketTransport(socket, TransportType.WifiLan);
-                ClientConnected?.Invoke(transport);
+                try
+                {
+                    ClientConnected?.Invoke(transport);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[TcpServer] Client handler error: {ex.Message}");
+                }
             }
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception)
-        {
-            // Listener stopped
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                if (_cts.Token.IsCancellationRequested) break;
+                Debug.WriteLine($"[TcpServer] AcceptSocketAsync error: {ex.Message}");
+                await Task.Delay(200).ConfigureAwait(false);
+            }
         }
     }
 
