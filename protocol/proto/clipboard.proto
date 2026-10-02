@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package connecttophone.protocol;
+
+option java_package = "com.connecttophone.protocol";
+option csharp_namespace = "ConnectToPhone.Protocol";
+
+enum ClipboardType {
+    CLIPBOARD_TEXT = 0;
+    CLIPBOARD_HTML = 1;
+    CLIPBOARD_IMAGE = 2;
+    CLIPBOARD_URL = 3;
+}
+
+message ClipboardSyncPayload {
+    ClipboardType type = 1;
+    uint64 content_hash = 2; // Deduplication hash to prevent infinite bounce loops
+    uint64 timestamp_millis = 3;
+    string text_content = 4;
+    bytes binary_data = 5;   // Image WebP/PNG or custom binary
+    string mime_type = 6;
+    string source_device_id = 7;
+}

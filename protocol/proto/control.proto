@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package connecttophone.protocol;
+
+option java_package = "com.connecttophone.protocol";
+option csharp_namespace = "ConnectToPhone.Protocol";
+
+enum VideoCodec {
+    CODEC_H264 = 0;
+    CODEC_HEVC = 1;
+    CODEC_AV1 = 2;
+}
+
+message VideoStreamConfig {
+    uint32 width = 1;
+    uint32 height = 2;
+    uint32 target_fps = 3;
+    VideoCodec codec = 4;
+    uint32 bitrate_kbps = 5;
+}
+
+message VideoFramePacket {
+    uint64 frame_number = 1;
+    uint64 pts_microseconds = 2;
+    bool is_keyframe = 3;
+    bytes nal_unit_data = 4;
+}
+
+message TouchInputEvent {
+    enum Action {
+        ACTION_DOWN = 0;
+        ACTION_MOVE = 1;
+        ACTION_UP = 2;
+    }
+    Action action = 1;
+    uint32 pointer_id = 2;
+    float normalized_x = 3; // 0.0 to 1.0
+    float normalized_y = 4; // 0.0 to 1.0
+}
+
+message MouseControlEvent {
+    int32 delta_x = 1;
+    int32 delta_y = 2;
+    bool left_button_down = 3;
+    bool right_button_down = 4;
+    bool middle_button_down = 5;
+    int32 wheel_delta = 6;
+}
+
+message MediaControlEvent {
+    enum MediaCommand {
+        PLAY_PAUSE = 0;
+        NEXT_TRACK = 1;
+        PREV_TRACK = 2;
+        VOLUME_UP = 3;
+        VOLUME_DOWN = 4;
+        MUTE_TOGGLE = 5;
+    }
+    MediaCommand command = 1;
+}
+
+message PowerControlEvent {
+    enum PowerAction {
+        LOCK = 0;
+        SLEEP = 1;
+        RESTART = 2;
+        SHUTDOWN = 3;
+    }
+    PowerAction action = 1;
+}

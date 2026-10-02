@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ConnectToPhone.App/ConnectToPhone.App.csproj" />
+    <Project Path="src/ConnectToPhone.Clipboard/ConnectToPhone.Clipboard.csproj" />
+    <Project Path="src/ConnectToPhone.Core/ConnectToPhone.Core.csproj" />
+    <Project Path="src/ConnectToPhone.Explorer/ConnectToPhone.Explorer.csproj" />
+    <Project Path="src/ConnectToPhone.Mcp/ConnectToPhone.Mcp.csproj" />
+    <Project Path="src/ConnectToPhone.Transports/ConnectToPhone.Transports.csproj" />
+  </Folder>
+</Solution>

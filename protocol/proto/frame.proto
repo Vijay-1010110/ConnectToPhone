@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package connecttophone.protocol;
+
+option java_package = "com.connecttophone.protocol";
+option csharp_namespace = "ConnectToPhone.Protocol";
+
+enum FrameType {
+    FRAME_UNKNOWN = 0;
+    
+    // Core & Handshake (0x01 - 0x0F)
+    FRAME_HANDSHAKE_SYN = 1;
+    FRAME_HANDSHAKE_ACK = 2;
+    FRAME_HEARTBEAT_PING = 3;
+    FRAME_HEARTBEAT_PONG = 4;
+    FRAME_DISCONNECT = 5;
+
+    // Clipboard (0x10 - 0x1F)
+    FRAME_CLIPBOARD_SYNC = 16;
+
+    // Virtual File System (0x20 - 0x2F)
+    FRAME_FS_LIST_DIR_REQ = 32;
+    FRAME_FS_LIST_DIR_RESP = 33;
+    FRAME_FS_PULL_FILE_REQ = 34;
+    FRAME_FS_PUSH_FILE_INIT = 35;
+
+    // High Speed Transfer (0x30 - 0x3F)
+    FRAME_TRANSFER_MANIFEST = 48;
+    FRAME_TRANSFER_CHUNK = 49;
+    FRAME_TRANSFER_CHUNK_ACK = 50;
+    FRAME_TRANSFER_PAUSE = 51;
+    FRAME_TRANSFER_RESUME = 52;
+    FRAME_TRANSFER_COMPLETE = 53;
+
+    // Screen Mirroring & Display Extension (0x40 - 0x4F)
+    FRAME_VIDEO_STREAM_CONFIG = 64;
+    FRAME_VIDEO_FRAME_PACKET = 65;
+    FRAME_TOUCH_INPUT_EVENT = 66;
+
+    // Remote Utility Control (0x50 - 0x5F)
+    FRAME_CTRL_MOUSE = 80;
+    FRAME_CTRL_KEYBOARD = 81;
+    FRAME_CTRL_MEDIA = 82;
+    FRAME_CTRL_POWER = 83;
+}
+
+enum DeviceType {
+    DEVICE_WINDOWS = 0;
+    DEVICE_ANDROID = 1;
+    DEVICE_MACOS = 2;
+    DEVICE_LINUX = 3;
+    DEVICE_IOS = 4;
+}
+
+enum TransportType {
+    TRANSPORT_UNKNOWN = 0;
+    TRANSPORT_WIFI_LAN = 1;
+    TRANSPORT_WIFI_DIRECT = 2;
+    TRANSPORT_USB_ADB = 4;
+    TRANSPORT_USB_AOA = 8;
+    TRANSPORT_USB_TETHER = 16;
+    TRANSPORT_BLUETOOTH_BLE = 32;
+    TRANSPORT_BLUETOOTH_RFCOMM = 64;
+}

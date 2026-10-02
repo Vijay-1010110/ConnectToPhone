@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package connecttophone.protocol;
+
+import "frame.proto";
+
+option java_package = "com.connecttophone.protocol";
+option csharp_namespace = "ConnectToPhone.Protocol";
+
+message HandshakeSyn {
+    string device_id = 1;
+    string device_name = 2;
+    DeviceType device_type = 3;
+    string app_version = 4;
+    uint32 supported_transports = 5; // bitmask of TransportType
+    bytes public_key = 6;            // X25519 public key (32 bytes)
+    uint64 timestamp_millis = 7;
+}
+
+message HandshakeAck {
+    bool accepted = 1;
+    uint64 session_id = 2;
+    string device_id = 3;
+    string device_name = 4;
+    bytes public_key = 5;
+    string pairing_pin = 6;          // 6-digit confirmation pin for first-time pairing
+    string rejection_reason = 7;
+}
+
+message HeartbeatPing {
+    uint64 timestamp_millis = 1;
+}
+
+message HeartbeatPong {
+    uint64 echo_timestamp_millis = 1;
+    uint32 battery_percentage = 2;
+    bool is_charging = 3;
+    string active_network_name = 4;
+}
+
+message DisconnectMessage {
+    enum Reason {
+        USER_INITIATED = 0;
+        TIMEOUT = 1;
+        PROTOCOL_ERROR = 2;
+        SHUTDOWN = 3;
+    }
+    Reason reason = 1;
+    string message = 2;
+}

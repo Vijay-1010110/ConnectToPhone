@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package connecttophone.protocol;
+
+option java_package = "com.connecttophone.protocol";
+option csharp_namespace = "ConnectToPhone.Protocol";
+
+message TransferManifest {
+    uint64 transfer_id = 1;
+    string file_name = 2;
+    string relative_path = 3;
+    uint64 total_bytes = 4;
+    uint32 chunk_size = 5;       // Default: 2097152 (2 MB)
+    uint32 total_chunks = 6;
+    bytes whole_file_hash = 7;   // Blake3 / SHA-256 (32 bytes)
+    string mime_type = 8;
+    uint64 modified_timestamp = 9;
+}
+
+message TransferChunk {
+    uint64 transfer_id = 1;
+    uint32 chunk_index = 2;
+    uint32 data_length = 3;
+    bytes payload = 4;
+    uint64 chunk_hash = 5;       // Blake3 truncated or CRC64
+}
+
+message TransferChunkAck {
+    uint64 transfer_id = 1;
+    uint32 chunk_index = 2;
+    bool success = 3;
+    string error_message = 4;
+}
+
+message TransferPause {
+    uint64 transfer_id = 1;
+    string reason = 2;
+}
+
+message TransferResume {
+    uint64 transfer_id = 1;
+    // Compressed bitset: bit N is set if chunk N was already verified and written
+    bytes received_chunk_bitset = 2;
+}
+
+message TransferComplete {
+    uint64 transfer_id = 1;
+    bool success = 2;
+    string final_path = 3;
+    string error_message = 4;
+}
+
+message TransferProgressStats {
+    uint64 transfer_id = 1;
+    uint64 bytes_transferred = 2;
+    uint64 total_bytes = 3;
+    double current_speed_bytes_sec = 4;
+    uint32 active_channels_mask = 5;
+    uint32 eta_seconds = 6;
+}

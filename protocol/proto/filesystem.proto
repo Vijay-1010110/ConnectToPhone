@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package connecttophone.protocol;
+
+option java_package = "com.connecttophone.protocol";
+option csharp_namespace = "ConnectToPhone.Protocol";
+
+enum EntryType {
+    ENTRY_FILE = 0;
+    ENTRY_DIRECTORY = 1;
+    ENTRY_DRIVE = 2;
+}
+
+enum FileCategory {
+    CAT_GENERIC = 0;
+    CAT_FOLDER = 1;
+    CAT_IMAGE = 2;
+    CAT_VIDEO = 3;
+    CAT_AUDIO = 4;
+    CAT_DOCUMENT = 5;
+    CAT_ARCHIVE = 6;
+    CAT_APK = 7;
+    CAT_CODE = 8;
+}
+
+message FsEntry {
+    string name = 1;
+    string path = 2;
+    EntryType entry_type = 3;
+    FileCategory category = 4;
+    uint64 size_bytes = 5;
+    uint64 modified_timestamp = 6;
+    bool is_hidden = 7;
+}
+
+message FsListDirRequest {
+    string target_path = 1; // Empty string or "/" for root drives/volumes
+    bool include_hidden = 2;
+}
+
+message FsListDirResponse {
+    string current_path = 1;
+    repeated FsEntry entries = 2;
+    bool success = 3;
+    string error_message = 4;
+}
+
+message FsPullFileRequest {
+    string remote_file_path = 1;
+    uint64 start_offset = 2;
+}
+
+message FsPushFileInit {
+    string destination_directory = 1;
+    string file_name = 2;
+    uint64 total_bytes = 3;
+}

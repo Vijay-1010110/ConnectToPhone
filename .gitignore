@@ -1,0 +1,29 @@
+# Build outputs & caches
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+*.iml
+
+# Android build outputs & caches
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.cxx/
+*.apk
+*.aab
+
+# Temp scratch screenshots
+scratch*.png
+screen*.png
+
+# Logs and temporary run files
+run_log.txt
+*.log
+
+# OS artifacts
+Thumbs.db
+.DS_Store
