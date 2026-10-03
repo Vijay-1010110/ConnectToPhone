@@ -168,41 +168,158 @@ fun TransfersTab(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            // Speed breakdown card
+            // Speed breakdown card - All 3 Protocols (USB, Wi-Fi, Bluetooth)
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(Modifier.padding(12.dp)) {
-                    Text("Multi-Path Bonded Status", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Multi-Path Bonded Status", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(
+                            text = "Active: ${AppState.activeProtocolName}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Surface(
                             color = Color(0xFF1E3A8A),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
                             Text(
-                                "⚡ USB: ${if (AppState.isConnected) "140+ MB/s (Linked)" else "Ready"}",
+                                "⚡ USB: ${if (AppState.isConnected && AppState.activeProtocolName.contains("USB")) "Active" else "Ready"}",
                                 color = Color(0xFF93C5FD),
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
                             )
                         }
                         Surface(
                             color = Color(0xFF064E3B),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
                             Text(
-                                "📶 Wi-Fi: 42424",
+                                "📶 Wi-Fi: ${if (AppState.isConnected && AppState.activeProtocolName.contains("Wi-Fi")) "Active" else "Ready"}",
                                 color = Color(0xFF6EE7B7),
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
                             )
+                        }
+                        Surface(
+                            color = Color(0xFF312E81),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                "📱 BT: ${if (AppState.isBluetoothConnected) "Active" else if (AppState.isBluetoothEnabled) "Ready" else "Off"}",
+                                color = Color(0xFFC7D2FE),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            // Dedicated Bluetooth Connection & Pairing Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("📶 Bluetooth Connection & Devices", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Surface(
+                            color = if (AppState.isBluetoothConnected) Color(0xFF10B981) else if (AppState.isBluetoothEnabled) Color(0xFF3B82F6) else Color(0xFF6B7280),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (AppState.isBluetoothConnected) "Connected" else if (AppState.isBluetoothEnabled) "Enabled" else "Disabled",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    if (AppState.pairedBluetoothDevices.isNotEmpty()) {
+                        Text("Paired PC Devices:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(4.dp))
+                        AppState.pairedBluetoothDevices.forEach { devString ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 3.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    devString,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(
+                                    onClick = { AppState.triggerBluetoothConnectCallback?.invoke(devString) },
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                                ) {
+                                    Text("Connect", fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    } else {
+                        Text(
+                            if (AppState.isBluetoothEnabled) "No paired PC detected. Tap 'Pair New PC' below to open Bluetooth settings." else "Bluetooth is disabled on your device. Please turn on Bluetooth.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { AppState.triggerBluetoothConnectCallback?.invoke(null) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("🔄 Connect Paired", fontSize = 12.sp)
+                        }
+                        Button(
+                            onClick = { AppState.triggerBluetoothSettingsCallback?.invoke() },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Text("⚙ Pair New PC", fontSize = 12.sp)
                         }
                     }
                 }

@@ -51,6 +51,13 @@ object AppState {
     var usbSpeedMb by mutableStateOf(0.0)
     var wifiSpeedMb by mutableStateOf(0.0)
 
+    var isBluetoothEnabled by mutableStateOf(false)
+    var isBluetoothConnected by mutableStateOf(false)
+    var bluetoothDeviceName by mutableStateOf("")
+    val pairedBluetoothDevices = mutableStateListOf<String>()
+    var triggerBluetoothConnectCallback: ((String?) -> Unit)? = null
+    var triggerBluetoothSettingsCallback: (() -> Unit)? = null
+
     var activeTransportInstance: ITransport? = null
     var scope: CoroutineScope? = null
     var triggerConnectCallback: (() -> Unit)? = null

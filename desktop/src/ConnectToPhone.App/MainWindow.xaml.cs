@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -703,6 +704,10 @@ public partial class MainWindow : Window
         {
             ViewExplorer.Visibility = Visibility.Visible;
             TxtViewTitle.Text = "Remote Phone Explorer";
+            if (_phoneEntries.Count == 0 && _activeTransport != null && _activeTransport.IsConnected)
+            {
+                _ = RequestPhoneDirectoryAsync("/");
+            }
         }
         else if (NavClipboard.IsChecked == true)
         {
@@ -750,6 +755,16 @@ public partial class MainWindow : Window
             TxtExtensionTitle.Text = "Remote Touchpad, Media & Power Controls";
             TxtExtensionDesc.Text = "Control your Windows PC wirelessly from your phone screen.";
         }
+    }
+
+    private void Nav_Clicked(object sender, RoutedEventArgs e)
+    {
+        Nav_Checked(sender, e);
+    }
+
+    private void DropZone_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        BtnBrowseSend_Click(sender, e);
     }
 
     private void BtnPause_Click(object sender, RoutedEventArgs e)
@@ -861,15 +876,25 @@ public partial class MainWindow : Window
 
     private async void ListPhoneEntries_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (ListPhoneEntries.SelectedItem is PhoneEntryDisplay selected && selected.IsDirectory)
+        if (ListPhoneEntries.SelectedItem is PhoneEntryDisplay selected)
         {
-            await RequestPhoneDirectoryAsync(selected.Path);
+            if (selected.IsDirectory)
+            {
+                await RequestPhoneDirectoryAsync(selected.Path);
+            }
+            else
+            {
+                BtnQuickViewSelected_Click(sender, e);
+            }
         }
     }
 
     private async void BtnExplorerBack_Click(object sender, RoutedEventArgs e)
     {
-        await RequestPhoneDirectoryAsync("/");
+        string current = TxtExplorerPath.Text.TrimEnd('/', '\\');
+        int lastSlash = current.LastIndexOfAny(new[] { '/', '\\' });
+        string parent = (lastSlash > 0) ? current.Substring(0, lastSlash) : "/";
+        await RequestPhoneDirectoryAsync(parent);
     }
 
     private async void BtnExplorerRefresh_Click(object sender, RoutedEventArgs e)
@@ -962,9 +987,15 @@ public partial class MainWindow : Window
 
     private void BtnOpenCacheFolder_Click(object sender, RoutedEventArgs e)
     {
-        if (Directory.Exists(_cacheManager.CacheDirectory))
+        try
         {
-            System.Diagnostics.Process.Start("explorer.exe", _cacheManager.CacheDirectory);
+            string cache = _cacheManager.CacheDirectory;
+            if (!Directory.Exists(cache)) Directory.CreateDirectory(cache);
+            Process.Start(new ProcessStartInfo { FileName = cache, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open cache folder: {ex.Message}", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -1002,18 +1033,29 @@ public partial class MainWindow : Window
 
     private void BtnOpenMovies_Click(object sender, RoutedEventArgs e)
     {
-        if (Directory.Exists(@"D:\movies"))
+        try
         {
-            System.Diagnostics.Process.Start("explorer.exe", @"D:\movies");
+            string movies = @"D:\movies";
+            if (!Directory.Exists(movies)) Directory.CreateDirectory(movies);
+            Process.Start(new ProcessStartInfo { FileName = movies, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open movies folder: {ex.Message}", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
     private void BtnOpenDownloads_Click(object sender, RoutedEventArgs e)
     {
-        string downloads = _cacheManager.DownloadsDirectory;
-        if (Directory.Exists(downloads))
+        try
         {
-            System.Diagnostics.Process.Start("explorer.exe", downloads);
+            string downloads = _cacheManager.DownloadsDirectory;
+            if (!Directory.Exists(downloads)) Directory.CreateDirectory(downloads);
+            Process.Start(new ProcessStartInfo { FileName = downloads, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open downloads folder: {ex.Message}", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

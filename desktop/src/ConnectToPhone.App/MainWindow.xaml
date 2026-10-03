@@ -22,18 +22,19 @@
         <Style x:Key="NavButtonStyle" TargetType="RadioButton">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#A1A1AA"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Height" Value="44"/>
-            <Setter Property="Margin" Value="0,4"/>
-            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Padding" Value="12,0"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="GroupName" Value="SidebarNav"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left" RecognizesAccessKey="False"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -41,7 +42,7 @@
                                 <Setter Property="Foreground" Value="#FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#3B82F6"/>
+                                <Setter TargetName="Border" Property="Background" Value="#2563EB"/>
                                 <Setter Property="Foreground" Value="#FFFFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -54,7 +55,7 @@
         <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="Background" Value="#27272A"/>
             <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Padding" Value="16"/>
             <Setter Property="BorderBrush" Value="#3F3F46"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
@@ -62,12 +63,12 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="240"/>
+            <ColumnDefinition Width="230"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         <!-- LEFT SIDEBAR -->
-        <Border Grid.Column="0" Background="#121215" BorderBrush="#27272A" BorderThickness="0,0,1,0" Padding="16">
+        <Border Grid.Column="0" Background="#121215" BorderBrush="#27272A" BorderThickness="0,0,1,0" Padding="12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -76,78 +77,80 @@
                 </Grid.RowDefinitions>
 
                 <!-- App Brand with Cool Generated Logo -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,8,0,24">
-                    <Image Source="app_icon.png" Width="36" Height="36" Margin="0,0,12,0"/>
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,4,0,16">
+                    <Image Source="app_icon.png" Width="32" Height="32" Margin="0,0,10,0"/>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="ConnectToPhone" FontWeight="Bold" FontSize="16" Foreground="#FFFFFF"/>
+                        <TextBlock Text="ConnectToPhone" FontWeight="Bold" FontSize="15" Foreground="#FFFFFF"/>
                         <TextBlock Text="Ultra Fast Multi-Link" FontSize="11" Foreground="#71717A"/>
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Navigation Links -->
-                <StackPanel Grid.Row="1">
-                    <RadioButton x:Name="NavDashboard" Style="{StaticResource NavButtonStyle}" Content="⚡  Transfer Hub &amp; Speed" IsChecked="True" Checked="Nav_Checked"/>
-                    <RadioButton x:Name="NavExplorer" Style="{StaticResource NavButtonStyle}" Content="📱  Remote Phone Explorer" Checked="Nav_Checked"/>
-                    <RadioButton x:Name="NavClipboard" Style="{StaticResource NavButtonStyle}" Content="📋  Clipboard Sync" Checked="Nav_Checked"/>
-                    
-                    <TextBlock Text="EXTENSIONS" FontSize="11" FontWeight="Bold" Foreground="#52525B" Margin="12,16,0,8"/>
-                    <RadioButton x:Name="NavMirror" Style="{StaticResource NavButtonStyle}" Content="🖥️  Screen Mirror" Checked="Nav_Checked"/>
-                    <RadioButton x:Name="NavDisplay" Style="{StaticResource NavButtonStyle}" Content="📐  Virtual Display" Checked="Nav_Checked"/>
-                    <RadioButton x:Name="NavRemote" Style="{StaticResource NavButtonStyle}" Content="🎮  PC Remote &amp; Control" Checked="Nav_Checked"/>
+                <!-- Navigation Links with ScrollViewer for all screen sizes -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <RadioButton x:Name="NavDashboard" Style="{StaticResource NavButtonStyle}" Content="⚡  Transfer Hub &amp; Speed" IsChecked="True" Checked="Nav_Checked" Click="Nav_Clicked"/>
+                        <RadioButton x:Name="NavExplorer" Style="{StaticResource NavButtonStyle}" Content="📱  Remote Phone Explorer" Checked="Nav_Checked" Click="Nav_Clicked"/>
+                        <RadioButton x:Name="NavClipboard" Style="{StaticResource NavButtonStyle}" Content="📋  Clipboard Sync" Checked="Nav_Checked" Click="Nav_Clicked"/>
+                        
+                        <TextBlock Text="EXTENSIONS" FontSize="10" FontWeight="Bold" Foreground="#52525B" Margin="10,12,0,6"/>
+                        <RadioButton x:Name="NavMirror" Style="{StaticResource NavButtonStyle}" Content="🖥️  Screen Mirror" Checked="Nav_Checked" Click="Nav_Clicked"/>
+                        <RadioButton x:Name="NavDisplay" Style="{StaticResource NavButtonStyle}" Content="📐  Virtual Display" Checked="Nav_Checked" Click="Nav_Clicked"/>
+                        <RadioButton x:Name="NavRemote" Style="{StaticResource NavButtonStyle}" Content="🎮  PC Remote &amp; Control" Checked="Nav_Checked" Click="Nav_Clicked"/>
 
-                    <TextBlock Text="SYSTEM &amp; SECURITY" FontSize="11" FontWeight="Bold" Foreground="#52525B" Margin="12,16,0,8"/>
-                    <RadioButton x:Name="NavCache" Style="{StaticResource NavButtonStyle}" Content="💾  Storage &amp; Cache" Checked="Nav_Checked"/>
-                    <RadioButton x:Name="NavSecurity" Style="{StaticResource NavButtonStyle}" Content="🔒  Paired &amp; Security" Checked="Nav_Checked"/>
-                    <RadioButton x:Name="NavMcp" Style="{StaticResource NavButtonStyle}" Content="🤖  MCP AI Server" Checked="Nav_Checked"/>
-                </StackPanel>
+                        <TextBlock Text="SYSTEM &amp; SECURITY" FontSize="10" FontWeight="Bold" Foreground="#52525B" Margin="10,12,0,6"/>
+                        <RadioButton x:Name="NavCache" Style="{StaticResource NavButtonStyle}" Content="💾  Storage &amp; Cache" Checked="Nav_Checked" Click="Nav_Clicked"/>
+                        <RadioButton x:Name="NavSecurity" Style="{StaticResource NavButtonStyle}" Content="🔒  Paired &amp; Security" Checked="Nav_Checked" Click="Nav_Clicked"/>
+                        <RadioButton x:Name="NavMcp" Style="{StaticResource NavButtonStyle}" Content="🤖  MCP AI Server" Checked="Nav_Checked" Click="Nav_Clicked"/>
+                    </StackPanel>
+                </ScrollViewer>
 
                 <!-- Footer Connection State -->
-                <Border Grid.Row="2" Background="#1E1E24" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+                <Border Grid.Row="2" Background="#1E1E24" CornerRadius="8" Padding="10" Margin="0,8,0,0">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="#EF4444" Margin="0,0,8,0"/>
-                            <TextBlock x:Name="TxtStatus" Text="Waiting for Phone..." FontWeight="SemiBold" FontSize="12" Foreground="#D1D5DB"/>
+                            <TextBlock x:Name="TxtStatus" Text="Waiting for Phone..." FontWeight="SemiBold" FontSize="11" Foreground="#D1D5DB"/>
                         </StackPanel>
-                        <TextBlock x:Name="TxtDeviceName" Text="Searching (USB / Wi-Fi)..." FontSize="11" Foreground="#9CA3AF"/>
+                        <TextBlock x:Name="TxtDeviceName" Text="Searching (USB / Wi-Fi)..." FontSize="10" Foreground="#9CA3AF" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </Border>
             </Grid>
         </Border>
 
         <!-- MAIN CONTENT AREA -->
-        <Grid Grid.Column="1" Margin="24">
+        <Grid Grid.Column="1" Margin="20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
             <!-- Top Header & Live Speed Summary -->
-            <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid Grid.Row="0" Margin="0,0,0,16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0">
-                    <TextBlock x:Name="TxtViewTitle" Text="Transfer Hub &amp; Live Multi-Path Speed" FontSize="24" FontWeight="Bold" Foreground="#FFFFFF"/>
-                    <TextBlock Text="Parallel bonded transmission across Wi-Fi, USB, and Bluetooth" FontSize="13" Foreground="#A1A1AA" Margin="0,4,0,0"/>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock x:Name="TxtViewTitle" Text="Transfer Hub &amp; Live Multi-Path Speed" FontSize="20" FontWeight="Bold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="Parallel bonded transmission across Wi-Fi, USB, and Bluetooth" FontSize="12" Foreground="#A1A1AA" Margin="0,2,0,0"/>
                 </StackPanel>
 
-                <!-- Speed Badges -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="#1E293B" BorderBrush="#3B82F6" BorderThickness="1" CornerRadius="8" Padding="12,6" Margin="0,0,8,0">
-                        <TextBlock x:Name="TxtUsbBadge" Text="USB: Ready" FontSize="12" FontWeight="Bold" Foreground="#60A5FA"/>
+                <!-- Speed Badges in a WrapPanel so they wrap cleanly on smaller windows without overlapping -->
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Orientation="Horizontal">
+                    <Border Background="#1E293B" BorderBrush="#3B82F6" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,6,2">
+                        <TextBlock x:Name="TxtUsbBadge" Text="USB: Ready" FontSize="11" FontWeight="Bold" Foreground="#60A5FA"/>
                     </Border>
-                    <Border Background="#1E293B" BorderBrush="#10B981" BorderThickness="1" CornerRadius="8" Padding="12,6" Margin="0,0,8,0">
-                        <TextBlock x:Name="TxtWifiBadge" Text="Wi-Fi: Ready" FontSize="12" FontWeight="Bold" Foreground="#34D399"/>
+                    <Border Background="#1E293B" BorderBrush="#10B981" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,6,2">
+                        <TextBlock x:Name="TxtWifiBadge" Text="Wi-Fi: Ready" FontSize="11" FontWeight="Bold" Foreground="#34D399"/>
                     </Border>
-                    <Border Background="#1E293B" BorderBrush="#38BDF8" BorderThickness="1" CornerRadius="8" Padding="12,6" Margin="0,0,8,0">
-                        <TextBlock x:Name="TxtBtBadge" Text="Bluetooth: Ready" FontSize="12" FontWeight="Bold" Foreground="#38BDF8"/>
+                    <Border Background="#1E293B" BorderBrush="#38BDF8" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,6,2">
+                        <TextBlock x:Name="TxtBtBadge" Text="Bluetooth: Ready" FontSize="11" FontWeight="Bold" Foreground="#38BDF8"/>
                     </Border>
-                    <Border Background="#2E1065" BorderBrush="#A855F7" BorderThickness="1" CornerRadius="8" Padding="12,6">
-                        <TextBlock x:Name="TxtBondedSpeed" Text="⚡ Bonded: Ready" FontSize="12" FontWeight="Bold" Foreground="#C084FC"/>
+                    <Border Background="#2E1065" BorderBrush="#A855F7" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,0,2">
+                        <TextBlock x:Name="TxtBondedSpeed" Text="⚡ Bonded: Ready" FontSize="11" FontWeight="Bold" Foreground="#C084FC"/>
                     </Border>
-                </StackPanel>
+                </WrapPanel>
             </Grid>
 
             <!-- VIEW 1: DASHBOARD / TRANSFER HUB -->
@@ -170,7 +173,7 @@
                         <!-- File Info -->
                         <Grid Grid.Row="0" Margin="0,0,0,12">
                             <StackPanel>
-                                <TextBlock x:Name="TxtCurrentFileName" Text="Ready for fast multi-path transfer" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                                <TextBlock x:Name="TxtCurrentFileName" Text="Ready for fast multi-path transfer" FontSize="15" FontWeight="SemiBold" Foreground="#FFFFFF"/>
                                 <TextBlock x:Name="TxtTransferDetails" Text="Drag &amp; drop files below, click Browse, or pull from phone explorer" FontSize="12" Foreground="#A1A1AA" Margin="0,2,0,0"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
@@ -197,12 +200,12 @@
                         <ColumnDefinition Width="260"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Drop Target -->
-                    <Border Grid.Column="0" BorderBrush="#3F3F46" BorderThickness="2" CornerRadius="12" Background="#1E1E24" AllowDrop="True" Drop="DropZone_Drop" DragOver="DropZone_DragOver" Margin="0,0,16,0">
+                    <!-- Drop Target with full-box click support -->
+                    <Border Grid.Column="0" BorderBrush="#3F3F46" BorderThickness="2" CornerRadius="12" Background="#1E1E24" AllowDrop="True" Drop="DropZone_Drop" DragOver="DropZone_DragOver" MouseLeftButtonUp="DropZone_Click" Cursor="Hand" Margin="0,0,16,0">
                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                            <TextBlock Text="📁" FontSize="42" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                            <TextBlock Text="Drag and Drop Files Here to Send Instantly" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Files will be bonded across USB 2.0/3.0 and Wi-Fi simultaneously" FontSize="12" Foreground="#71717A" HorizontalAlignment="Center" Margin="0,4,0,16"/>
+                            <TextBlock Text="📁" FontSize="40" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBlock Text="Click or Drag Files Here to Send" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Files will be bonded across USB 2.0/3.0, Wi-Fi, and Bluetooth" FontSize="12" Foreground="#71717A" HorizontalAlignment="Center" Margin="0,4,0,14"/>
                             <Button Content="Browse Files to Send..." Background="#2563EB" Foreground="#FFFFFF" FontWeight="SemiBold" Padding="16,8" HorizontalAlignment="Center" Click="BtnBrowseSend_Click"/>
                         </StackPanel>
                     </Border>

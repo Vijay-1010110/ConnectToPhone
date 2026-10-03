@@ -102,6 +102,21 @@ class MainActivity : ComponentActivity() {
             probeAndConnect(deviceId, deviceName)
         }
 
+        // 4b. Wire Bluetooth controls & runtime permissions
+        checkAndRequestBluetoothPermissions()
+        AppState.triggerBluetoothConnectCallback = { targetAddress ->
+            lifecycleScope.launch(Dispatchers.IO) {
+                connectBluetooth(deviceId, deviceName, targetAddress)
+            }
+        }
+        AppState.triggerBluetoothSettingsCallback = {
+            try {
+                startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+            } catch (_: Exception) {}
+        }
+
         // 5. Start background auto-connect loop (USB + Wi-Fi + Bluetooth)
         startAutoConnectLoop(deviceId, deviceName)
 
@@ -232,6 +247,111 @@ class MainActivity : ComponentActivity() {
                 }
             } catch (_: Exception) {}
         }
+    }
+
+    private suspend fun connectBluetooth(deviceId: String, deviceName: String, targetAddress: String?) {
+        try {
+            val btAdapter = (getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+                ?: BluetoothAdapter.getDefaultAdapter()
+            if (btAdapter == null || !btAdapter.isEnabled) {
+                runOnUiThread {
+                    Toast.makeText(this, "Please enable Bluetooth first", Toast.LENGTH_SHORT).show()
+                }
+                return
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                runOnUiThread {
+                    Toast.makeText(this, "Bluetooth Connect permission required", Toast.LENGTH_SHORT).show()
+                }
+                return
+            }
+
+            val devices = btAdapter.bondedDevices ?: emptySet()
+            val targetDev = if (!targetAddress.isNullOrEmpty()) {
+                devices.firstOrNull { it.address.equals(targetAddress, ignoreCase = true) || "${it.name} (${it.address})".contains(targetAddress, ignoreCase = true) }
+            } else {
+                devices.firstOrNull()
+            }
+
+            if (targetDev == null) {
+                runOnUiThread {
+                    Toast.makeText(this, "No paired PC found. Please pair in Settings.", Toast.LENGTH_LONG).show()
+                }
+                return
+            }
+
+            runOnUiThread {
+                Toast.makeText(this, "Connecting to ${targetDev.name} via Bluetooth...", Toast.LENGTH_SHORT).show()
+            }
+
+            val socket = targetDev.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+            socket.connect()
+            if (socket.isConnected) {
+                val transport = BluetoothRfcommTransport(socket)
+                setupTransportHandlers(transport)
+                sendHandshakeSyn(transport, deviceId, deviceName)
+                runOnUiThread {
+                    AppState.isBluetoothConnected = true
+                    Toast.makeText(this, "Connected to ${targetDev.name} via Bluetooth!", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            runOnUiThread {
+                Toast.makeText(this, "Bluetooth connect failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun checkAndRequestBluetoothPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val needed = mutableListOf<String>()
+            if (checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                needed.add(android.Manifest.permission.BLUETOOTH_CONNECT)
+            }
+            if (checkSelfPermission(android.Manifest.permission.BLUETOOTH_SCAN) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                needed.add(android.Manifest.permission.BLUETOOTH_SCAN)
+            }
+            if (needed.isNotEmpty()) {
+                requestPermissions(needed.toTypedArray(), 101)
+            }
+        }
+        refreshBluetoothState()
+    }
+
+    private fun refreshBluetoothState() {
+        try {
+            val btAdapter = (getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+                ?: BluetoothAdapter.getDefaultAdapter()
+            if (btAdapter != null) {
+                AppState.isBluetoothEnabled = btAdapter.isEnabled
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    AppState.pairedBluetoothDevices.clear()
+                    btAdapter.bondedDevices?.forEach { dev ->
+                        val label = "${dev.name ?: "PC Device"} (${dev.address})"
+                        if (!AppState.pairedBluetoothDevices.contains(label)) {
+                            AppState.pairedBluetoothDevices.add(label)
+                        }
+                    }
+                }
+            } else {
+                AppState.isBluetoothEnabled = false
+            }
+        } catch (_: Exception) {}
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 101) {
+            refreshBluetoothState()
+            startBluetoothListener()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshBluetoothState()
     }
 
     private suspend fun sendHandshakeSyn(transport: ITransport, deviceId: String, deviceName: String) {
