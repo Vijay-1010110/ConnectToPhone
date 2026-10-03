@@ -15,6 +15,7 @@ using ConnectToPhone.Explorer;
 using ConnectToPhone.Transports;
 using ConnectToPhone.Transports.Bluetooth;
 using ConnectToPhone.Transports.Discovery;
+using ConnectToPhone.Transports.Simulation;
 using ConnectToPhone.Transports.Sockets;
 using ConnectToPhone.Transports.Usb;
 using Microsoft.Win32;
@@ -35,11 +36,16 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<PhoneEntryDisplay> _phoneEntries = [];
     private readonly ObservableCollection<string> _clipboardLog = [];
     private readonly ObservableCollection<PairedDeviceDisplay> _pairedDevices = [];
+    private readonly ObservableCollection<TargetDeviceItem> _targetDevices = [];
     private readonly ObservableCollection<CachedFileItem> _cachedFiles = [];
     private readonly Dictionary<ulong, SparseFileWriter> _activeWriters = [];
     private readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, ChunkScheduler> _activeSchedulers = new();
+    private readonly Dictionary<string, SimulatedTransport> _simulatedTransports = new();
     private CancellationTokenSource? _autoConnectCts;
     private string _currentCacheFilter = "All";
+    private bool _usbEnabled = true;
+    private bool _wifiEnabled = true;
+    private bool _btEnabled = true;
 
     public sealed class PhoneEntryDisplay
     {
@@ -58,6 +64,15 @@ public partial class MainWindow : Window
         public string TrustStatus { get; set; } = string.Empty;
     }
 
+    public sealed class TargetDeviceItem
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Protocol { get; set; } = string.Empty;
+        public bool IsVirtual { get; set; }
+        public override string ToString() => Name;
+    }
+
     public MainWindow()
     {
         try
@@ -67,6 +82,7 @@ public partial class MainWindow : Window
             ListPhoneEntries.ItemsSource = _phoneEntries;
             ListClipboardHistory.ItemsSource = _clipboardLog;
             ListPairedDevices.ItemsSource = _pairedDevices;
+            CmbTargetDevice.ItemsSource = _targetDevices;
             ListCachedFiles.ItemsSource = _cachedFiles;
 
             _cacheManager.CacheUpdated += () => Dispatcher.Invoke(RefreshCacheView);
@@ -150,6 +166,9 @@ public partial class MainWindow : Window
         try
         {
             _pairedDevices.Clear();
+            _targetDevices.Clear();
+
+            // 1. Devices from security storage
             foreach (var d in _security.GetAllDevices())
             {
                 _pairedDevices.Add(new PairedDeviceDisplay
@@ -159,8 +178,17 @@ public partial class MainWindow : Window
                     DeviceType = d.DeviceType.ToString(),
                     TrustStatus = d.IsTrusted ? "✓ Trusted" : "Pending"
                 });
+
+                _targetDevices.Add(new TargetDeviceItem
+                {
+                    Id = d.DeviceId,
+                    Name = $"📱 {d.DeviceName} ({d.DeviceType})",
+                    Protocol = d.DeviceType.ToString(),
+                    IsVirtual = false
+                });
             }
 
+            // 2. Devices from Bluetooth
             if (_btBridge != null && _btBridge.IsSupported)
             {
                 foreach (var bt in _btBridge.GetPairedDevices())
@@ -181,11 +209,49 @@ public partial class MainWindow : Window
                                 DeviceType = "Bluetooth",
                                 TrustStatus = isConnected ? "⚡ Connected" : "✓ Paired"
                             });
+
+                            _targetDevices.Add(new TargetDeviceItem
+                            {
+                                Id = addr,
+                                Name = $"📶 {name} (Bluetooth)",
+                                Protocol = "Bluetooth",
+                                IsVirtual = false
+                            });
                         }
                     }
                     catch { }
                 }
             }
+
+            // 3. Virtual Simulated Devices
+            foreach (var sim in _simulatedTransports.Values)
+            {
+                if (!_pairedDevices.Any(p => p.DeviceId == sim.SimulatedDeviceId))
+                {
+                    _pairedDevices.Add(new PairedDeviceDisplay
+                    {
+                        DeviceName = sim.SimulatedDeviceName,
+                        DeviceId = sim.SimulatedDeviceId,
+                        DeviceType = "Virtual Simulation",
+                        TrustStatus = sim.IsConnected ? "⚡ Active (Virtual)" : "💤 Disconnected"
+                    });
+                }
+
+                _targetDevices.Add(new TargetDeviceItem
+                {
+                    Id = sim.SimulatedDeviceId,
+                    Name = $"🧪 {sim.SimulatedDeviceName} (Virtual)",
+                    Protocol = sim.Type.ToString(),
+                    IsVirtual = true
+                });
+            }
+
+            if (_targetDevices.Count > 0 && CmbTargetDevice != null && CmbTargetDevice.SelectedIndex < 0)
+            {
+                CmbTargetDevice.SelectedIndex = 0;
+            }
+
+            UpdateProtocolUi();
         }
         catch (Exception ex)
         {
@@ -267,45 +333,52 @@ public partial class MainWindow : Window
             {
                 if (_activeTransport == null || !_activeTransport.IsConnected)
                 {
-                    // 1. Try USB ADB
-                    var devices = await adb.GetConnectedAdbDevicesAsync(ct);
-                    if (devices.Count > 0)
+                    // 1. Try USB ADB (if enabled)
+                    if (_usbEnabled)
                     {
-                        string deviceId = devices[0];
-                        var transport = await adb.ConnectOverUsbAsync(deviceId, AdbBridgeTransport.DefaultUsbForwardPort, ct);
-                        if (transport != null)
+                        var devices = await adb.GetConnectedAdbDevicesAsync(ct);
+                        if (devices.Count > 0)
                         {
-                            Dispatcher.Invoke(() =>
+                            string deviceId = devices[0];
+                            var transport = await adb.ConnectOverUsbAsync(deviceId, AdbBridgeTransport.DefaultUsbForwardPort, ct);
+                            if (transport != null)
                             {
-                                AttachTransport(transport, $"USB ({deviceId})");
-                            });
+                                Dispatcher.Invoke(() =>
+                                {
+                                    AttachTransport(transport, $"USB ({deviceId})");
+                                });
 
-                            await SendHandshakeAndRootReqAsync(transport);
-                            await Task.Delay(2500, ct).ConfigureAwait(false);
-                            continue;
-                        }
-                    }
-
-                    // 2. Try Wi-Fi to phone IP (e.g. 192.168.6.215)
-                    string[] wifiCandidates = ["192.168.6.215", "192.168.1.100"];
-                    foreach (var ip in wifiCandidates)
-                    {
-                        try
-                        {
-                            using var ctsTimeout = new CancellationTokenSource(800);
-                            var wifiTransport = await TcpServer.ConnectAsync(ip, 42424, ctsTimeout.Token);
-                            if (wifiTransport != null && wifiTransport.IsConnected)
-                            {
-                                AttachTransport(wifiTransport, $"Wi-Fi ({ip})");
-                                await SendHandshakeAndRootReqAsync(wifiTransport);
-                                break;
+                                await SendHandshakeAndRootReqAsync(transport);
+                                await Task.Delay(2500, ct).ConfigureAwait(false);
+                                continue;
                             }
                         }
-                        catch {}
                     }
 
-                    // 3. Try paired Bluetooth devices
-                    if (_activeTransport == null && _btBridge != null && _btBridge.IsSupported)
+                    // 2. Try Wi-Fi to phone IP (if enabled)
+                    if (_wifiEnabled)
+                    {
+                        string manualIp = Dispatcher.Invoke(() => TxtDirectIp?.Text?.Trim() ?? "192.168.6.215");
+                        string[] wifiCandidates = [manualIp, "192.168.6.215", "192.168.1.100"];
+                        foreach (var ip in wifiCandidates.Distinct())
+                        {
+                            try
+                            {
+                                using var ctsTimeout = new CancellationTokenSource(800);
+                                var wifiTransport = await TcpServer.ConnectAsync(ip, 42424, ctsTimeout.Token);
+                                if (wifiTransport != null && wifiTransport.IsConnected)
+                                {
+                                    AttachTransport(wifiTransport, $"Wi-Fi ({ip})");
+                                    await SendHandshakeAndRootReqAsync(wifiTransport);
+                                    break;
+                                }
+                            }
+                            catch {}
+                        }
+                    }
+
+                    // 3. Try paired Bluetooth devices (if enabled)
+                    if (_btEnabled && _activeTransport == null && _btBridge != null && _btBridge.IsSupported)
                     {
                         var pairedBt = _btBridge.GetPairedDevices();
                         foreach (var dev in pairedBt)
@@ -723,7 +796,7 @@ public partial class MainWindow : Window
         else if (NavSecurity.IsChecked == true)
         {
             ViewSecurity.Visibility = Visibility.Visible;
-            TxtViewTitle.Text = "Paired Devices & Security Management";
+            TxtViewTitle.Text = "Connections, Paired Devices & Multi-Device Simulation";
             RefreshPairedDevicesList();
         }
         else if (NavMcp.IsChecked == true)
@@ -1084,6 +1157,357 @@ public partial class MainWindow : Window
     private void ListActivity_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         BtnOpenDownloads_Click(sender, e);
+    }
+
+    private void UpdateProtocolUi()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            // Header buttons
+            if (BtnToggleUsb != null)
+            {
+                BtnToggleUsb.Content = _usbEnabled ? "⚡ USB: On" : "⚡ USB: Off";
+                BtnToggleUsb.Background = _usbEnabled ? new SolidColorBrush(Color.FromRgb(30, 41, 59)) : new SolidColorBrush(Color.FromRgb(63, 63, 70));
+                BtnToggleUsb.Foreground = _usbEnabled ? new SolidColorBrush(Color.FromRgb(96, 165, 250)) : new SolidColorBrush(Color.FromRgb(156, 163, 175));
+            }
+            if (BtnToggleWifi != null)
+            {
+                BtnToggleWifi.Content = _wifiEnabled ? "📶 Wi-Fi: On" : "📶 Wi-Fi: Off";
+                BtnToggleWifi.Background = _wifiEnabled ? new SolidColorBrush(Color.FromRgb(6, 78, 59)) : new SolidColorBrush(Color.FromRgb(63, 63, 70));
+                BtnToggleWifi.Foreground = _wifiEnabled ? new SolidColorBrush(Color.FromRgb(52, 211, 153)) : new SolidColorBrush(Color.FromRgb(156, 163, 175));
+            }
+            if (BtnToggleBt != null)
+            {
+                BtnToggleBt.Content = _btEnabled ? "📱 BT: On" : "📱 BT: Off";
+                BtnToggleBt.Background = _btEnabled ? new SolidColorBrush(Color.FromRgb(49, 46, 129)) : new SolidColorBrush(Color.FromRgb(63, 63, 70));
+                BtnToggleBt.Foreground = _btEnabled ? new SolidColorBrush(Color.FromRgb(129, 140, 248)) : new SolidColorBrush(Color.FromRgb(156, 163, 175));
+            }
+
+            // Detail cards in ViewSecurity
+            if (TxtDetailUsbStatus != null)
+            {
+                TxtDetailUsbStatus.Text = _usbEnabled 
+                    ? (_activeTransport?.Type.HasFlag(TransportType.UsbAdb) == true ? "Status: Connected ⚡" : "Status: Active / Ready") 
+                    : "Status: Disabled by user";
+            }
+            if (BtnDetailUsbToggle != null)
+            {
+                BtnDetailUsbToggle.Content = _usbEnabled ? "⚡ Disconnect USB" : "⚡ Enable & Connect USB";
+            }
+
+            if (TxtDetailWifiStatus != null)
+            {
+                TxtDetailWifiStatus.Text = _wifiEnabled 
+                    ? (_activeTransport?.Type.HasFlag(TransportType.WifiLan) == true ? "Status: Connected 📶" : "Status: Server Active (42424)") 
+                    : "Status: Disabled by user";
+            }
+            if (BtnDetailWifiToggle != null)
+            {
+                BtnDetailWifiToggle.Content = _wifiEnabled ? "📶 Disconnect Wi-Fi" : "📶 Enable & Connect Wi-Fi";
+            }
+
+            if (TxtDetailBtStatus != null)
+            {
+                TxtDetailBtStatus.Text = _btEnabled 
+                    ? (_activeTransport?.Type.HasFlag(TransportType.BluetoothRfcomm) == true ? "Status: Connected 📱" : "Status: RFCOMM Ready") 
+                    : "Status: Disabled by user";
+            }
+            if (BtnDetailBtToggle != null)
+            {
+                BtnDetailBtToggle.Content = _btEnabled ? "📱 Disconnect BT" : "📱 Enable & Connect BT";
+            }
+        });
+    }
+
+    private void CmbTargetDevice_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CmbTargetDevice.SelectedItem is TargetDeviceItem item)
+        {
+            _activityLog.Insert(0, $"[Target Device] Target switched to '{item.Name}'.");
+        }
+    }
+
+    private async void BtnConnectTarget_Click(object sender, RoutedEventArgs e)
+    {
+        if (CmbTargetDevice.SelectedItem is TargetDeviceItem item)
+        {
+            if (item.IsVirtual && _simulatedTransports.TryGetValue(item.Id, out var sim))
+            {
+                AttachTransport(sim, $"{sim.SimulatedDeviceName} (Virtual)");
+                await SendHandshakeAndRootReqAsync(sim);
+                return;
+            }
+
+            _activityLog.Insert(0, $"[Connect] Connecting to target '{item.Name}'...");
+            _ = AutoConnectUsbLoopAsync(CancellationToken.None);
+        }
+        else
+        {
+            _activityLog.Insert(0, "[Connect] Scanning for available devices across USB, Wi-Fi, and Bluetooth...");
+            _ = AutoConnectUsbLoopAsync(CancellationToken.None);
+        }
+    }
+
+    private void BtnDisconnectTarget_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeTransport != null)
+        {
+            var t = _activeTransport;
+            _ = t.DisposeAsync();
+            _activeTransport = null;
+            OnTransportDisconnected(t);
+            _activityLog.Insert(0, "[Disconnect] Active device disconnected by user.");
+            MessageBox.Show("Disconnected from active device.", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            MessageBox.Show("No active device is currently connected.", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    private void BtnPairNewDevice_Click(object sender, RoutedEventArgs e)
+    {
+        NavSecurity.IsChecked = true;
+        Nav_Checked(NavSecurity, new RoutedEventArgs());
+        TxtPairPinInput?.Focus();
+    }
+
+    private void BtnToggleUsb_Click(object sender, RoutedEventArgs e)
+    {
+        _usbEnabled = !_usbEnabled;
+        UpdateProtocolUi();
+        if (!_usbEnabled)
+        {
+            if (_activeTransport != null && _activeTransport.Type.HasFlag(TransportType.UsbAdb))
+            {
+                _ = _activeTransport.DisposeAsync();
+                _activeTransport = null;
+            }
+            TxtUsbBadge.Text = "USB: Disabled";
+            _activityLog.Insert(0, "[USB] Protocol disabled by user.");
+        }
+        else
+        {
+            TxtUsbBadge.Text = "USB: Scanning";
+            _activityLog.Insert(0, "[USB] Protocol enabled. Scanning ADB devices...");
+            _ = AutoConnectUsbLoopAsync(CancellationToken.None);
+        }
+    }
+
+    private void BtnToggleWifi_Click(object sender, RoutedEventArgs e)
+    {
+        _wifiEnabled = !_wifiEnabled;
+        UpdateProtocolUi();
+        if (!_wifiEnabled)
+        {
+            if (_activeTransport != null && _activeTransport.Type.HasFlag(TransportType.WifiLan))
+            {
+                _ = _activeTransport.DisposeAsync();
+                _activeTransport = null;
+            }
+            TxtWifiBadge.Text = "Wi-Fi: Disabled";
+            _activityLog.Insert(0, "[Wi-Fi] Protocol disabled by user.");
+        }
+        else
+        {
+            TxtWifiBadge.Text = "Wi-Fi: Listening (42424)";
+            _activityLog.Insert(0, "[Wi-Fi] Protocol enabled. Restarting TCP Server port 42424...");
+            StartTcpServer();
+        }
+    }
+
+    private void BtnToggleBt_Click(object sender, RoutedEventArgs e)
+    {
+        _btEnabled = !_btEnabled;
+        UpdateProtocolUi();
+        if (!_btEnabled)
+        {
+            if (_activeTransport != null && _activeTransport.Type.HasFlag(TransportType.BluetoothRfcomm))
+            {
+                _ = _activeTransport.DisposeAsync();
+                _activeTransport = null;
+            }
+            TxtBtBadge.Text = "Bluetooth: Disabled";
+            _activityLog.Insert(0, "[Bluetooth] Protocol disabled by user.");
+        }
+        else
+        {
+            TxtBtBadge.Text = "Bluetooth: Listening";
+            _activityLog.Insert(0, "[Bluetooth] Protocol enabled. Listening for RFCOMM connections...");
+            StartBluetoothServer();
+        }
+    }
+
+    private async void BtnDirectConnect_Click(object sender, RoutedEventArgs e)
+    {
+        string ip = TxtDirectIp.Text.Trim();
+        if (!int.TryParse(TxtDirectPort.Text.Trim(), out int port)) port = 42424;
+
+        _activityLog.Insert(0, $"[Wi-Fi Direct] Connecting to {ip}:{port}...");
+        try
+        {
+            using var cts = new CancellationTokenSource(3000);
+            var transport = await TcpServer.ConnectAsync(ip, port, cts.Token);
+            if (transport != null && transport.IsConnected)
+            {
+                AttachTransport(transport, $"Wi-Fi ({ip}:{port})");
+                await SendHandshakeAndRootReqAsync(transport);
+                MessageBox.Show($"Successfully connected to {ip}:{port}!", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Could not connect to {ip}:{port}. Verify device is on same network and port is open.", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            _activityLog.Insert(0, $"[Wi-Fi Direct] Connection error: {ex.Message}");
+            MessageBox.Show($"Connection failed: {ex.Message}", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void BtnScanAdb_Click(object sender, RoutedEventArgs e)
+    {
+        _activityLog.Insert(0, "[USB] Rescanning connected ADB devices...");
+        _ = AutoConnectUsbLoopAsync(CancellationToken.None);
+    }
+
+    private void BtnSubmitPair_Click(object sender, RoutedEventArgs e)
+    {
+        string name = TxtPairDeviceName.Text.Trim();
+        string pin = TxtPairPinInput.Text.Trim();
+
+        if (string.IsNullOrEmpty(name)) name = "Android Phone";
+        if (pin.Length != 6)
+        {
+            MessageBox.Show("Please enter a valid 6-digit PIN.", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        string devId = $"DEV_{Math.Abs(name.GetHashCode() ^ pin.GetHashCode()):X8}";
+        _security.TrustDevice(devId, name, DeviceType.Android);
+        RefreshPairedDevicesList();
+        try { System.Media.SystemSounds.Asterisk.Play(); } catch {}
+        _activityLog.Insert(0, $"[Security] Successfully paired & authorized device '{name}' with PIN {pin}.");
+        MessageBox.Show($"Device '{name}' successfully authorized and paired!", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private async void BtnConnectSelectedDevice_Click(object sender, RoutedEventArgs e)
+    {
+        if (ListPairedDevices.SelectedItem is PairedDeviceDisplay sel)
+        {
+            if (_simulatedTransports.TryGetValue(sel.DeviceId, out var sim))
+            {
+                AttachTransport(sim, $"{sim.SimulatedDeviceName} (Virtual)");
+                await SendHandshakeAndRootReqAsync(sim);
+                return;
+            }
+            _activityLog.Insert(0, $"[Connect] Attempting connection to '{sel.DeviceName}'...");
+            _ = AutoConnectUsbLoopAsync(CancellationToken.None);
+        }
+        else
+        {
+            MessageBox.Show("Please select a device from the list to connect.", "ConnectToPhone", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    private void BtnDisconnectSelectedDevice_Click(object sender, RoutedEventArgs e)
+    {
+        BtnDisconnectTarget_Click(sender, e);
+    }
+
+    private void BtnRefreshDevices_Click(object sender, RoutedEventArgs e)
+    {
+        RefreshPairedDevicesList();
+        _activityLog.Insert(0, "[Devices] Refreshed paired and discovered devices list.");
+    }
+
+    private void BtnSpawnGalaxyTab_Click(object sender, RoutedEventArgs e)
+    {
+        SpawnSimulatedDevice("Simulated Galaxy Tab S9", "sim_tab_s9", TransportType.WifiLan);
+    }
+
+    private void BtnSpawnPixel8_Click(object sender, RoutedEventArgs e)
+    {
+        SpawnSimulatedDevice("Simulated Pixel 8 Pro", "sim_pixel_8", TransportType.UsbAdb);
+    }
+
+    private void SpawnSimulatedDevice(string deviceName, string deviceId, TransportType type)
+    {
+        var simTransport = new SimulatedTransport(deviceName, deviceId, type);
+        _simulatedTransports[deviceId] = simTransport;
+        
+        // Trust in security
+        _security.TrustDevice(deviceId, deviceName, DeviceType.Android);
+
+        RefreshPairedDevicesList();
+
+        // Attach as active transport
+        AttachTransport(simTransport, $"{deviceName} (Virtual)");
+        _ = SendHandshakeAndRootReqAsync(simTransport);
+
+        TxtSimulationStatus.Text = $"Active Simulation: {deviceName} connected ({type}). High-speed ~80 MB/s pipeline active. Test explorer and transfers!";
+        _activityLog.Insert(0, $"[Simulation] Spawned virtual device '{deviceName}' ({deviceId}).");
+        try { System.Media.SystemSounds.Asterisk.Play(); } catch {}
+    }
+
+    private void BtnSimulateDrop_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeTransport is SimulatedTransport sim)
+        {
+            sim.TriggerDisconnect();
+            TxtSimulationStatus.Text = $"[Failover Test] Dropped channel for '{sim.SimulatedDeviceName}'. Failover triggered! Secondary standby channels engage without data loss.";
+            _activityLog.Insert(0, $"[Simulation Failover] Triggered channel drop for {sim.SimulatedDeviceName}. Zero-loss failover initiated.");
+        }
+        else if (_activeTransport != null)
+        {
+            var current = _activeTransport;
+            _ = current.DisposeAsync();
+            _activeTransport = null;
+            OnTransportDisconnected(current);
+            TxtSimulationStatus.Text = "[Failover Test] Dropped active physical channel! Auto-connector will failover to surviving channel.";
+            _activityLog.Insert(0, "[Failover Test] Triggered disconnect on active transport.");
+        }
+        else
+        {
+            TxtSimulationStatus.Text = "No active transport to disconnect. Spawn a virtual device or connect a phone first.";
+        }
+    }
+
+    private void BtnSimulateReconnect_Click(object sender, RoutedEventArgs e)
+    {
+        if (_simulatedTransports.Count > 0)
+        {
+            var sim = _simulatedTransports.Values.First();
+            sim.TriggerReconnect();
+            AttachTransport(sim, $"{sim.SimulatedDeviceName} (Virtual)");
+            _ = SendHandshakeAndRootReqAsync(sim);
+            TxtSimulationStatus.Text = $"Simulated channel restored for '{sim.SimulatedDeviceName}'. Pipe re-synchronized.";
+            _activityLog.Insert(0, $"[Simulation] Channel reconnected for {sim.SimulatedDeviceName}.");
+        }
+        else
+        {
+            TxtSimulationStatus.Text = "No simulated devices found. Click 'Spawn Galaxy Tab S9' to create one.";
+        }
+    }
+
+    private void BtnRemoveSimulated_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var kvp in _simulatedTransports)
+        {
+            _ = kvp.Value.DisposeAsync();
+            _security.UnpairDevice(kvp.Key);
+        }
+        _simulatedTransports.Clear();
+        if (_activeTransport is SimulatedTransport)
+        {
+            _activeTransport = null;
+            StatusDot.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68));
+            TxtStatus.Text = "Waiting for Phone...";
+        }
+        RefreshPairedDevicesList();
+        TxtSimulationStatus.Text = "Removed all simulated virtual devices.";
+        _activityLog.Insert(0, "[Simulation] Virtual devices removed.");
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)

@@ -59,6 +59,20 @@
             <Setter Property="BorderBrush" Value="#3F3F46"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
+
+        <!-- ComboBox Dark Style -->
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#27272A"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#27272A"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -97,9 +111,9 @@
                         <RadioButton x:Name="NavDisplay" Style="{StaticResource NavButtonStyle}" Content="📐  Virtual Display" Checked="Nav_Checked" Click="Nav_Clicked"/>
                         <RadioButton x:Name="NavRemote" Style="{StaticResource NavButtonStyle}" Content="🎮  PC Remote &amp; Control" Checked="Nav_Checked" Click="Nav_Clicked"/>
 
-                        <TextBlock Text="SYSTEM &amp; SECURITY" FontSize="10" FontWeight="Bold" Foreground="#52525B" Margin="10,12,0,6"/>
+                        <TextBlock Text="SYSTEM &amp; DEVICES" FontSize="10" FontWeight="Bold" Foreground="#52525B" Margin="10,12,0,6"/>
+                        <RadioButton x:Name="NavSecurity" Style="{StaticResource NavButtonStyle}" Content="🔗  Connections &amp; Devices" Checked="Nav_Checked" Click="Nav_Clicked"/>
                         <RadioButton x:Name="NavCache" Style="{StaticResource NavButtonStyle}" Content="💾  Storage &amp; Cache" Checked="Nav_Checked" Click="Nav_Clicked"/>
-                        <RadioButton x:Name="NavSecurity" Style="{StaticResource NavButtonStyle}" Content="🔒  Paired &amp; Security" Checked="Nav_Checked" Click="Nav_Clicked"/>
                         <RadioButton x:Name="NavMcp" Style="{StaticResource NavButtonStyle}" Content="🤖  MCP AI Server" Checked="Nav_Checked" Click="Nav_Clicked"/>
                     </StackPanel>
                 </ScrollViewer>
@@ -124,33 +138,74 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Top Header & Live Speed Summary -->
+            <!-- Top Header & Device / Protocol Toolbar -->
             <Grid Grid.Row="0" Margin="0,0,0,16">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
-                    <TextBlock x:Name="TxtViewTitle" Text="Transfer Hub &amp; Live Multi-Path Speed" FontSize="20" FontWeight="Bold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="Parallel bonded transmission across Wi-Fi, USB, and Bluetooth" FontSize="12" Foreground="#A1A1AA" Margin="0,2,0,0"/>
-                </StackPanel>
+                <!-- Row 0: Title & Speed Badges -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <!-- Speed Badges in a WrapPanel so they wrap cleanly on smaller windows without overlapping -->
-                <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Orientation="Horizontal">
-                    <Border Background="#1E293B" BorderBrush="#3B82F6" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,6,2">
-                        <TextBlock x:Name="TxtUsbBadge" Text="USB: Ready" FontSize="11" FontWeight="Bold" Foreground="#60A5FA"/>
-                    </Border>
-                    <Border Background="#1E293B" BorderBrush="#10B981" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,6,2">
-                        <TextBlock x:Name="TxtWifiBadge" Text="Wi-Fi: Ready" FontSize="11" FontWeight="Bold" Foreground="#34D399"/>
-                    </Border>
-                    <Border Background="#1E293B" BorderBrush="#38BDF8" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,6,2">
-                        <TextBlock x:Name="TxtBtBadge" Text="Bluetooth: Ready" FontSize="11" FontWeight="Bold" Foreground="#38BDF8"/>
-                    </Border>
-                    <Border Background="#2E1065" BorderBrush="#A855F7" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,0,2">
-                        <TextBlock x:Name="TxtBondedSpeed" Text="⚡ Bonded: Ready" FontSize="11" FontWeight="Bold" Foreground="#C084FC"/>
-                    </Border>
-                </WrapPanel>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock x:Name="TxtViewTitle" Text="Transfer Hub &amp; Live Multi-Path Speed" FontSize="19" FontWeight="Bold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="Parallel bonded transmission across Wi-Fi, USB, and Bluetooth" FontSize="11" Foreground="#A1A1AA" Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <!-- Speed Badges in a WrapPanel so they wrap cleanly on smaller windows without overlapping -->
+                    <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Border Background="#1E293B" BorderBrush="#3B82F6" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,6,2">
+                            <TextBlock x:Name="TxtUsbBadge" Text="USB: Ready" FontSize="11" FontWeight="Bold" Foreground="#60A5FA"/>
+                        </Border>
+                        <Border Background="#1E293B" BorderBrush="#10B981" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,6,2">
+                            <TextBlock x:Name="TxtWifiBadge" Text="Wi-Fi: Ready" FontSize="11" FontWeight="Bold" Foreground="#34D399"/>
+                        </Border>
+                        <Border Background="#1E293B" BorderBrush="#38BDF8" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,6,2">
+                            <TextBlock x:Name="TxtBtBadge" Text="Bluetooth: Ready" FontSize="11" FontWeight="Bold" Foreground="#38BDF8"/>
+                        </Border>
+                        <Border Background="#2E1065" BorderBrush="#A855F7" BorderThickness="1" CornerRadius="8" Padding="10,5" Margin="0,2,0,2">
+                            <TextBlock x:Name="TxtBondedSpeed" Text="⚡ Bonded: Ready" FontSize="11" FontWeight="Bold" Foreground="#C084FC"/>
+                        </Border>
+                    </WrapPanel>
+                </Grid>
+
+                <!-- Row 1: Interactive Target Device Selector & Protocol Toolbar -->
+                <Border Grid.Row="1" Background="#1E1E24" CornerRadius="8" Padding="10,6" Margin="0,10,0,0" BorderBrush="#3F3F46" BorderThickness="1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Target Device Dropdown -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Target Device:" FontSize="12" FontWeight="SemiBold" Foreground="#A1A1AA" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="CmbTargetDevice" Width="210" Height="28" VerticalContentAlignment="Center" SelectionChanged="CmbTargetDevice_SelectionChanged"/>
+                        </StackPanel>
+
+                        <!-- Device Action Buttons -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                            <Button x:Name="BtnConnectTarget" Content="🔗 Connect" Background="#2563EB" Foreground="#FFFFFF" FontWeight="SemiBold" Padding="10,4" Margin="0,0,6,0" Click="BtnConnectTarget_Click"/>
+                            <Button x:Name="BtnDisconnectTarget" Content="⚡ Disconnect" Background="#7F1D1D" Foreground="#FCA5A5" FontWeight="SemiBold" Padding="10,4" Margin="0,0,6,0" Click="BtnDisconnectTarget_Click"/>
+                            <Button x:Name="BtnPairNewDevice" Content="➕ Pair Device" Background="#3F3F46" Foreground="#FFFFFF" FontWeight="SemiBold" Padding="10,4" Margin="0,0,6,0" Click="BtnPairNewDevice_Click"/>
+                        </StackPanel>
+
+                        <!-- Protocol Disconnect/Reconnect Toggles -->
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Protocols:" FontSize="11" Foreground="#71717A" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <Button x:Name="BtnToggleUsb" Content="⚡ USB: On" Background="#1E293B" Foreground="#60A5FA" FontSize="11" FontWeight="SemiBold" Padding="8,4" Margin="0,0,4,0" ToolTip="Click to disconnect or reconnect USB protocol" Click="BtnToggleUsb_Click"/>
+                            <Button x:Name="BtnToggleWifi" Content="📶 Wi-Fi: On" Background="#064E3B" Foreground="#34D399" FontSize="11" FontWeight="SemiBold" Padding="8,4" Margin="0,0,4,0" ToolTip="Click to disconnect or reconnect Wi-Fi protocol" Click="BtnToggleWifi_Click"/>
+                            <Button x:Name="BtnToggleBt" Content="📱 BT: On" Background="#312E81" Foreground="#818CF8" FontSize="11" FontWeight="SemiBold" Padding="8,4" ToolTip="Click to disconnect or reconnect Bluetooth protocol" Click="BtnToggleBt_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
             </Grid>
 
             <!-- VIEW 1: DASHBOARD / TRANSFER HUB -->
@@ -299,65 +354,179 @@
                 </Border>
             </Grid>
 
-            <!-- VIEW 4: SECURITY & PAIRED DEVICES -->
+            <!-- VIEW 4: CONNECTIONS, PAIRED DEVICES & SIMULATION -->
             <Grid x:Name="ViewSecurity" Grid.Row="1" Visibility="Collapsed">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,0,8,16">
 
-                <!-- PIN Verification Card -->
-                <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Device Verification PIN" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
-                            <TextBlock Text="Enter this 6-digit PIN on your phone to verify and pair as a trusted device." FontSize="12" Foreground="#A1A1AA" Margin="0,4,0,12"/>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Border Background="#1E1E24" CornerRadius="8" Padding="16,8" BorderBrush="#3B82F6" BorderThickness="1">
-                                    <TextBlock x:Name="TxtPin" Text="------" FontSize="26" FontWeight="Bold" Foreground="#60A5FA"/>
-                                </Border>
-                                <Button Content="🔄 Generate New PIN" Background="#3F3F46" Foreground="#FFFFFF" Margin="12,0,0,0" Padding="12,8" Click="BtnRegenPin_Click"/>
-                            </StackPanel>
-                        </StackPanel>
-                        <Border Grid.Column="1" Background="#064E3B" CornerRadius="8" Padding="16" VerticalAlignment="Center">
+                        <!-- CARD 1: Connection Protocol Controls & Manual Direct Connect -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,14">
                             <StackPanel>
-                                <TextBlock Text="⚡ Zero-Idle Efficiency" FontWeight="Bold" Foreground="#34D399"/>
-                                <TextBlock Text="0.0% CPU when idle • Pure event-driven sockets" FontSize="11" Foreground="#A7F3D0" Margin="0,4,0,0"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Protocol Connection Settings &amp; Overrides" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                        <TextBlock Text="Explicitly disconnect, reconnect, or toggle individual transport channels (USB, Wi-Fi LAN, Bluetooth) or connect to custom IP endpoints." FontSize="12" Foreground="#A1A1AA" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <Border Grid.Column="1" Background="#064E3B" CornerRadius="8" Padding="12,6" VerticalAlignment="Center">
+                                        <TextBlock Text="⚡ Zero-Idle Efficiency Active" FontWeight="Bold" FontSize="11" Foreground="#34D399"/>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Protocol Toggle Row -->
+                                <Grid Margin="0,4,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- USB Control Box -->
+                                    <Border Grid.Column="0" Background="#18181B" BorderBrush="#3B82F6" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,6,0">
+                                        <StackPanel>
+                                            <TextBlock Text="⚡ USB ADB Bridge" FontWeight="Bold" FontSize="13" Foreground="#60A5FA"/>
+                                            <TextBlock x:Name="TxtDetailUsbStatus" Text="Status: Ready / Scanning" FontSize="11" Foreground="#9CA3AF" Margin="0,2,0,8"/>
+                                            <Button x:Name="BtnDetailUsbToggle" Content="⚡ Disconnect USB" Background="#1E293B" Foreground="#93C5FD" FontWeight="SemiBold" Padding="8,5" Click="BtnToggleUsb_Click"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Wi-Fi Control Box -->
+                                    <Border Grid.Column="1" Background="#18181B" BorderBrush="#10B981" BorderThickness="1" CornerRadius="8" Padding="10" Margin="3,0,3,0">
+                                        <StackPanel>
+                                            <TextBlock Text="📶 Wi-Fi LAN (Port 42424)" FontWeight="Bold" FontSize="13" Foreground="#34D399"/>
+                                            <TextBlock x:Name="TxtDetailWifiStatus" Text="Status: Server Active" FontSize="11" Foreground="#9CA3AF" Margin="0,2,0,8"/>
+                                            <Button x:Name="BtnDetailWifiToggle" Content="📶 Disconnect Wi-Fi" Background="#064E3B" Foreground="#86EFAC" FontWeight="SemiBold" Padding="8,5" Click="BtnToggleWifi_Click"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Bluetooth Control Box -->
+                                    <Border Grid.Column="2" Background="#18181B" BorderBrush="#38BDF8" BorderThickness="1" CornerRadius="8" Padding="10" Margin="6,0,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="📱 Bluetooth RFCOMM" FontWeight="Bold" FontSize="13" Foreground="#38BDF8"/>
+                                            <TextBlock x:Name="TxtDetailBtStatus" Text="Status: Ready / Listening" FontSize="11" Foreground="#9CA3AF" Margin="0,2,0,8"/>
+                                            <Button x:Name="BtnDetailBtToggle" Content="📱 Disconnect BT" Background="#312E81" Foreground="#C7D2FE" FontWeight="SemiBold" Padding="8,5" Click="BtnToggleBt_Click"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Manual IP / Port Connect Form -->
+                                <Border Background="#1E1E24" CornerRadius="8" Padding="12,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Manual Connect IP:" FontSize="12" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBox Grid.Column="1" x:Name="TxtDirectIp" Text="192.168.6.215" Width="140" Height="28" Background="#27272A" Foreground="#FFFFFF" BorderBrush="#3F3F46" VerticalContentAlignment="Center" Padding="6,2" Margin="0,0,8,0"/>
+                                        <TextBlock Grid.Column="2" Text="Port:" FontSize="12" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBox Grid.Column="3" x:Name="TxtDirectPort" Text="42424" Width="60" Height="28" Background="#27272A" Foreground="#FFFFFF" BorderBrush="#3F3F46" VerticalContentAlignment="Center" Padding="6,2" Margin="0,0,10,0"/>
+                                        <Button Grid.Column="4" x:Name="BtnDirectConnect" Content="🔗 Connect to IP" Background="#2563EB" Foreground="#FFFFFF" FontWeight="SemiBold" Padding="12,5" HorizontalAlignment="Left" Click="BtnDirectConnect_Click"/>
+                                        <Button Grid.Column="5" x:Name="BtnScanAdb" Content="⚡ Rescan USB Devices" Background="#15803D" Foreground="#FFFFFF" FontWeight="SemiBold" Padding="12,5" Click="BtnScanAdb_Click"/>
+                                    </Grid>
+                                </Border>
                             </StackPanel>
                         </Border>
-                    </Grid>
-                </Border>
 
-                <!-- Paired Devices List -->
-                <Border Grid.Row="1" Style="{StaticResource CardStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+                        <!-- CARD 2: PIN Verification & Pair New Device -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="Trusted &amp; Paired Devices" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,12"/>
-                        <ListView Grid.Row="1" x:Name="ListPairedDevices" Background="Transparent" BorderThickness="0" Foreground="#FFFFFF">
-                            <ListView.View>
-                                <GridView>
-                                    <GridViewColumn Header="Device Name" Width="260" DisplayMemberBinding="{Binding DeviceName}"/>
-                                    <GridViewColumn Header="Device ID" Width="220" DisplayMemberBinding="{Binding DeviceId}"/>
-                                    <GridViewColumn Header="Type" Width="100" DisplayMemberBinding="{Binding DeviceType}"/>
-                                    <GridViewColumn Header="Status" Width="120" DisplayMemberBinding="{Binding TrustStatus}"/>
-                                </GridView>
-                            </ListView.View>
-                        </ListView>
+                                <!-- Left: Verification PIN -->
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                    <TextBlock Text="PC Verification PIN" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                    <TextBlock Text="Enter this 6-digit PIN on your phone to authorize and pair securely." FontSize="11" Foreground="#A1A1AA" Margin="0,2,0,10"/>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Background="#1E1E24" CornerRadius="8" Padding="16,8" BorderBrush="#3B82F6" BorderThickness="1">
+                                            <TextBlock x:Name="TxtPin" Text="------" FontSize="26" FontWeight="Bold" Foreground="#60A5FA"/>
+                                        </Border>
+                                        <Button Content="🔄 New PIN" Background="#3F3F46" Foreground="#FFFFFF" Margin="12,0,0,0" Padding="12,8" Click="BtnRegenPin_Click"/>
+                                    </StackPanel>
+                                </StackPanel>
 
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-                            <Button Content="✕ Unpair Selected Device" Background="#7F1D1D" Foreground="#FCA5A5" FontWeight="SemiBold" Padding="16,8" Click="BtnUnpair_Click"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                                <!-- Right: Manual Device Pairing Form -->
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                    <TextBlock Text="Pair New Device (Enter Phone PIN)" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                    <TextBlock Text="Enter device name and 6-digit PIN shown on mobile screen to establish pair:" FontSize="11" Foreground="#A1A1AA" Margin="0,2,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" x:Name="TxtPairDeviceName" Text="Android Phone" Height="30" Background="#27272A" Foreground="#FFFFFF" BorderBrush="#3F3F46" VerticalContentAlignment="Center" Padding="6,2" Margin="0,0,6,0"/>
+                                        <TextBox Grid.Column="1" x:Name="TxtPairPinInput" Text="" Height="30" Background="#27272A" Foreground="#34D399" BorderBrush="#3F3F46" VerticalContentAlignment="Center" Padding="6,2" Margin="0,0,8,0" MaxLength="6"/>
+                                        <Button Grid.Column="2" x:Name="BtnSubmitPair" Content="➕ Pair" Background="#2563EB" Foreground="#FFFFFF" FontWeight="Bold" Padding="14,6" Click="BtnSubmitPair_Click"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- CARD 3: Paired & Known Devices List -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,14">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Paired &amp; Known Devices" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                    <Button Grid.Column="1" x:Name="BtnRefreshDevices" Content="🔄 Refresh List" Background="#3F3F46" Foreground="#FFFFFF" Padding="10,4" Click="BtnRefreshDevices_Click"/>
+                                </Grid>
+
+                                <ListView x:Name="ListPairedDevices" Background="Transparent" BorderThickness="0" Foreground="#FFFFFF" MinHeight="110" MaxHeight="160">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="Device Name" Width="260" DisplayMemberBinding="{Binding DeviceName}"/>
+                                            <GridViewColumn Header="Device ID / Serial" Width="220" DisplayMemberBinding="{Binding DeviceId}"/>
+                                            <GridViewColumn Header="Type" Width="110" DisplayMemberBinding="{Binding DeviceType}"/>
+                                            <GridViewColumn Header="Status" Width="130" DisplayMemberBinding="{Binding TrustStatus}"/>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                                    <Button x:Name="BtnConnectSelectedDevice" Content="🔗 Connect Selected" Background="#2563EB" Foreground="#FFFFFF" FontWeight="SemiBold" Padding="14,6" Margin="0,0,8,0" Click="BtnConnectSelectedDevice_Click"/>
+                                    <Button x:Name="BtnDisconnectSelectedDevice" Content="⚡ Disconnect Selected" Background="#3F3F46" Foreground="#FFFFFF" FontWeight="SemiBold" Padding="14,6" Margin="0,0,8,0" Click="BtnDisconnectSelectedDevice_Click"/>
+                                    <Button x:Name="BtnUnpair" Content="✕ Unpair Selected Device" Background="#7F1D1D" Foreground="#FCA5A5" FontWeight="SemiBold" Padding="14,6" Click="BtnUnpair_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- CARD 4: Multi-Device Simulation & Failover Lab -->
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="🧪 Multi-Device Simulation &amp; Failover Testing Lab" FontSize="15" FontWeight="Bold" Foreground="#A78BFA"/>
+                                <TextBlock Text="Simulate multiple virtual Android devices in memory. Browse realistic simulated Android file trees, stream high-speed test chunks (~80 MB/s), and simulate mid-transfer channel disconnects to test zero-loss bonded failover." FontSize="11" Foreground="#A1A1AA" Margin="0,2,0,10"/>
+
+                                <!-- Simulation Action Buttons -->
+                                <WrapPanel Margin="0,0,0,8">
+                                    <Button x:Name="BtnSpawnGalaxyTab" Content="📱 Spawn Galaxy Tab S9 (Virtual)" Background="#1E3A8A" Foreground="#93C5FD" FontWeight="SemiBold" Padding="12,6" Margin="0,0,8,6" Click="BtnSpawnGalaxyTab_Click"/>
+                                    <Button x:Name="BtnSpawnPixel8" Content="📱 Spawn Pixel 8 Pro (Virtual)" Background="#064E3B" Foreground="#86EFAC" FontWeight="SemiBold" Padding="12,6" Margin="0,0,8,6" Click="BtnSpawnPixel8_Click"/>
+                                    <Button x:Name="BtnSimulateDrop" Content="⚡ Simulate Wi-Fi Drop (Failover Test)" Background="#7F1D1D" Foreground="#FCA5A5" FontWeight="SemiBold" Padding="12,6" Margin="0,0,8,6" Click="BtnSimulateDrop_Click"/>
+                                    <Button x:Name="BtnSimulateReconnect" Content="🔄 Simulate Link Reconnect" Background="#14532D" Foreground="#86EFAC" FontWeight="SemiBold" Padding="12,6" Margin="0,0,8,6" Click="BtnSimulateReconnect_Click"/>
+                                    <Button x:Name="BtnRemoveSimulated" Content="🗑 Remove Virtual Devices" Background="#3F3F46" Foreground="#D1D5DB" Padding="12,6" Margin="0,0,0,6" Click="BtnRemoveSimulated_Click"/>
+                                </WrapPanel>
+
+                                <!-- Simulation Status & Log Box -->
+                                <Border Background="#18181B" CornerRadius="8" Padding="10,6">
+                                    <TextBlock x:Name="TxtSimulationStatus" Text="Simulation Engine: Ready. No virtual devices spawned. Tap 'Spawn' above to simulate." FontSize="11" Foreground="#A78BFA"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
 
             <!-- VIEW: CACHE & STORAGE MANAGEMENT -->

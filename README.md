@@ -22,9 +22,9 @@ Get the latest production-ready builds directly from this repository:
 
 ### Verification & Checksums (SHA-256)
 - **`ConnectToWindow-v1.1.0.apk`**:
-  `AEFEFB9310B3BC7C49E9088B55976887F34B0759530CC17780978E4CDBAA98B5`
+  `A59ABFA8FF624E4D84DC0725DB2D40EF36AB398B89D07C305308EE0E985D2954`
 - **`ConnectToWindow-Desktop-v1.1.0-win-x64.zip`**:
-  `EA9143AA36BA8A02B5CC7C54D92208D2665D1D53DD705E64B3B3126613BB8A12`
+  `273D276536833524FCDD3D27AE3AEEC6E1E4CB39680E26CF77859D951CFAD0E7`
 
 ---
 
@@ -47,6 +47,19 @@ When you install or extract the Windows app:
 
 ## 🌟 Key Highlights
 
+- **🔗 Device Management & Prominent Connection Controls**:
+  - Target Device Selector dropdown in the desktop header and mobile dashboard to choose between physical and virtual devices.
+  - 1-click **`🔗 Connect`**, **`⚡ Disconnect`**, **`➕ Pair Device (PIN)`**, and **`✕ Unpair`** buttons directly visible on screen.
+  - Manual IP Direct Connect with custom port support (`192.168.x.x:42424`).
+- **🎛️ Independent Protocol Connection Settings & Toggles**:
+  - Explicitly toggle, disconnect, or reconnect individual transport channels:
+    - **USB ADB Bridge**: Disable/enable ADB scanning and USB pipes.
+    - **Wi-Fi LAN (Port 42424)**: Start/stop TCP server or disconnect wireless sockets.
+    - **Bluetooth RFCOMM**: Toggle RFCOMM listener and auto-pairing.
+- **🧪 Multi-Device Simulation & Failover Lab**:
+  - Built-in simulation engine allows spawning virtual mobile devices (`Simulated Galaxy Tab S9`, `Simulated Pixel 8 Pro`) directly in memory.
+  - Virtual devices generate realistic Android directory trees (`/storage/emulated/0`, `Movies`, `DCIM`, `Documents`) and stream high-speed test chunks (~80 MB/s).
+  - Test mid-transfer channel drops with a single click to visually observe zero-loss automatic failover to surviving channels.
 - **⚡ Multi-Protocol Bonding**: Transmits chunks in parallel across **Wi-Fi (LAN / Wi-Fi Direct)**, **USB (ADB Bridge / Reverse Tunnel)**, and **Bluetooth (RFCOMM SPP)** simultaneously to maximize total bandwidth (up to 140+ MB/s over USB 3.0).
 - **🔄 True Bidirectional Autonomy ("Single Device Control")**:
   - Pull files from PC directly to Phone without touching your laptop.
@@ -54,7 +67,7 @@ When you install or extract the Windows app:
   - Browse remote PC drives (`C:\`, `D:\`), preview media, and stream remote files.
 - **🛡️ Chunk-Level Failover & Zero-Loss Resume**: Slices files into deterministic 2 MB hashed chunks. If USB or Wi-Fi is unplugged mid-transfer, chunks automatically divert to surviving channels without dropping or restarting the transfer.
 - **🎮 Ergonomic Thumb-Zone Remote Controller**:
-  - **Large Thumb Trackpad**: Precision cursor gliding optimized for thumb reach.
+  - **Large Thumb Trackpad**: Precision cursor gliding aligned to the lower thumb reach zone.
   - **Dedicated Vertical Scroll Strip**: Continuous scrolling strip (`▲ ↕ ▼`) right beside the trackpad.
   - **3-Button Mouse**: Distinct `Left Click`, `🔘 Middle`, and `Right Click` buttons beneath the touchpad.
   - **Horizontal Scroll Wheel**: Dedicated horizontal swipe strip (`◀ Horizontal Scroll Wheel ▶`).

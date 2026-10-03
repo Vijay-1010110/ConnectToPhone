@@ -58,9 +58,76 @@ object AppState {
     var triggerBluetoothConnectCallback: ((String?) -> Unit)? = null
     var triggerBluetoothSettingsCallback: (() -> Unit)? = null
 
+    var targetPcName by mutableStateOf("Windows PC")
+    var isWifiProtocolEnabled by mutableStateOf(true)
+    var isUsbProtocolEnabled by mutableStateOf(true)
+    var isBluetoothProtocolEnabled by mutableStateOf(true)
+    var isPairingDialogVisible by mutableStateOf(false)
+    var isPairedWithPc by mutableStateOf(true)
+    var pairingPinInput by mutableStateOf("")
+
     var activeTransportInstance: ITransport? = null
     var scope: CoroutineScope? = null
     var triggerConnectCallback: (() -> Unit)? = null
+
+    fun disconnectPc() {
+        val transport = activeTransportInstance
+        if (transport != null) {
+            try {
+                transport.close()
+            } catch (_: Exception) {}
+        }
+        activeTransportInstance = null
+        isConnected = false
+        isBluetoothConnected = false
+        activeProtocolName = "Disconnected"
+    }
+
+    fun reconnectPc() {
+        triggerConnectCallback?.invoke()
+    }
+
+    fun toggleWifiProtocol() {
+        isWifiProtocolEnabled = !isWifiProtocolEnabled
+        if (!isWifiProtocolEnabled && activeProtocolName.contains("Wi-Fi")) {
+            disconnectPc()
+        } else if (isWifiProtocolEnabled) {
+            reconnectPc()
+        }
+    }
+
+    fun toggleUsbProtocol() {
+        isUsbProtocolEnabled = !isUsbProtocolEnabled
+        if (!isUsbProtocolEnabled && activeProtocolName.contains("USB")) {
+            disconnectPc()
+        } else if (isUsbProtocolEnabled) {
+            reconnectPc()
+        }
+    }
+
+    fun toggleBluetoothProtocol() {
+        isBluetoothProtocolEnabled = !isBluetoothProtocolEnabled
+        if (!isBluetoothProtocolEnabled && isBluetoothConnected) {
+            disconnectPc()
+        } else if (isBluetoothProtocolEnabled) {
+            triggerBluetoothConnectCallback?.invoke(null)
+        }
+    }
+
+    fun unpairPc() {
+        isPairedWithPc = false
+        disconnectPc()
+        targetPcName = "Not Paired"
+    }
+
+    fun pairWithPin(pin: String) {
+        if (pin.length == 6) {
+            isPairedWithPc = true
+            targetPcName = "Windows PC"
+            isPairingDialogVisible = false
+            reconnectPc()
+        }
+    }
 
     fun loadExistingFiles(context: Context) {
         val dir = context.getExternalFilesDir(null) ?: context.filesDir
