@@ -9,7 +9,7 @@
         MinHeight="600" MinWidth="900"
         WindowStartupLocation="CenterScreen"
         Background="#18181B" Foreground="#FAFAFA"
-        Icon="app.ico"
+        Icon="pack://application:,,,/app.ico"
         FontFamily="Segoe UI Variable Text, Segoe UI, sans-serif">
 
     <!-- Windows Taskbar Integration: Live Progress on App Taskbar Icon -->

@@ -23,6 +23,11 @@ public sealed class TcpServer : IAsyncDisposable
     {
         Port = port;
         _listener = new TcpListener(IPAddress.Any, port);
+        try
+        {
+            _listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+        }
+        catch { }
     }
 
     public void Start()

@@ -59,16 +59,24 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        InitializeComponent();
-        ListActivity.ItemsSource = _activityLog;
-        ListPhoneEntries.ItemsSource = _phoneEntries;
-        ListClipboardHistory.ItemsSource = _clipboardLog;
-        ListPairedDevices.ItemsSource = _pairedDevices;
-        ListCachedFiles.ItemsSource = _cachedFiles;
+        try
+        {
+            InitializeComponent();
+            ListActivity.ItemsSource = _activityLog;
+            ListPhoneEntries.ItemsSource = _phoneEntries;
+            ListClipboardHistory.ItemsSource = _clipboardLog;
+            ListPairedDevices.ItemsSource = _pairedDevices;
+            ListCachedFiles.ItemsSource = _cachedFiles;
 
-        _cacheManager.CacheUpdated += () => Dispatcher.Invoke(RefreshCacheView);
+            _cacheManager.CacheUpdated += () => Dispatcher.Invoke(RefreshCacheView);
 
-        Loaded += MainWindow_Loaded;
+            Loaded += MainWindow_Loaded;
+        }
+        catch (Exception ex)
+        {
+            try { File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[MainWindow] Constructor Exception: {ex}\n"); } catch { }
+            throw;
+        }
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -77,15 +85,30 @@ public partial class MainWindow : Window
         {
             File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[MainWindow] MainWindow_Loaded start at {DateTime.Now}\n");
 
-            // 1. Hook clipboard listener to the Win32 HWND
-            IntPtr hwnd = new WindowInteropHelper(this).Handle;
-            _clipboardService = new ClipboardService(Dispatcher);
-            _clipboardService.Initialize(hwnd);
-            _clipboardService.LocalClipboardCopied += OnLocalClipboardCopied;
+            // Ensure window is visible, restored and brought to foreground
+            WindowState = WindowState.Normal;
+            Show();
+            Activate();
+            Focus();
+            Topmost = true;
+            Dispatcher.BeginInvoke(new Action(() => Topmost = false), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+            try
+            {
+                // 1. Hook clipboard listener to the Win32 HWND
+                IntPtr hwnd = new WindowInteropHelper(this).Handle;
+                _clipboardService = new ClipboardService(Dispatcher);
+                _clipboardService.Initialize(hwnd);
+                _clipboardService.LocalClipboardCopied += OnLocalClipboardCopied;
+            }
+            catch (Exception ex)
+            {
+                File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[MainWindow] ClipboardService Init Note: {ex.Message}\n");
+            }
 
             // 2. Initialize status & PIN
             _activityLog.Add("[System] Initialized ConnectToPhone Core Engine.");
-            UpdateTaskbarProgress(0, TaskbarItemProgressState.None);
+            try { UpdateTaskbarProgress(0, TaskbarItemProgressState.None); } catch { }
             TxtPin.Text = _security.CurrentSessionPin;
             RefreshPairedDevicesList();
 

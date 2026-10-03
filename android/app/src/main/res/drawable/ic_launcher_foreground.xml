@@ -1,43 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Desktop / Window Frame -->
+
+    <!-- DESKTOP PC / MONITOR (Left, centered within safe zone) -->
+    <!-- Monitor Outer Body -->
     <path
         android:fillColor="#1E293B"
-        android:pathData="M24,28h40c2.2,0 4,1.8 4,4v28c0,2.2 -1.8,4 -4,4H24c-2.2,0 -4,-1.8 -4,-4V32c0,-2.2 1.8,-4 4,-4z" />
-    <path
-        android:fillColor="#38BDF8"
-        android:pathData="M24,28h40c2.2,0 4,1.8 4,4v6H20v-6c0,-2.2 1.8,-4 4,-4z" />
-    <!-- Window controls -->
-    <path
-        android:fillColor="#EF4444"
-        android:pathData="M25,32a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" />
-    <path
-        android:fillColor="#FBBF24"
-        android:pathData="M30,32a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" />
-    <path
-        android:fillColor="#34D399"
-        android:pathData="M35,32a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" />
-    <!-- Monitor Stand -->
-    <path
-        android:fillColor="#475569"
-        android:pathData="M40,64h8v6h-8z M34,70h20v3H34z" />
-    <!-- Mobile Phone Frame -->
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="1.5"
+        android:pathData="M24,34h34c2.2,0 4,1.8 4,4v24c0,2.2 -1.8,4 -4,4H24c-2.2,0 -4,-1.8 -4,-4V38c0,-2.2 1.8,-4 4,-4z" />
+    
+    <!-- Monitor Screen Inner -->
     <path
         android:fillColor="#0F172A"
-        android:pathData="M66,42h22c2.2,0 4,1.8 4,4v34c0,2.2 -1.8,4 -4,4H66c-2.2,0 -4,-1.8 -4,-4V46c0,-2.2 1.8,-4 4,-4z" />
-    <!-- Phone Screen -->
+        android:pathData="M23,37h36v22H23z" />
+    
+    <!-- Window Header Bar on Monitor -->
     <path
-        android:fillColor="#0284C7"
-        android:pathData="M65,47h24v28H65z" />
-    <!-- Phone Speaker Bar & Home Pill -->
+        android:fillColor="#1E3A8A"
+        android:pathData="M23,37h36v5H23z" />
+    <!-- Three Titlebar Dots (Red, Yellow, Green) -->
+    <path
+        android:fillColor="#EF4444"
+        android:pathData="M26,39.5a1,1 0 1,0 2,0a1,1 0 1,0 -2,0" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M29.5,39.5a1,1 0 1,0 2,0a1,1 0 1,0 -2,0" />
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M33,39.5a1,1 0 1,0 2,0a1,1 0 1,0 -2,0" />
+
+    <!-- Monitor Code/Data Graphic lines inside screen -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M27,46h16v2H27z M27,51h24v2H27z M27,55h12v1.5H27z" />
+
+    <!-- Monitor Stand -->
+    <path
+        android:fillColor="#64748B"
+        android:pathData="M37,66h8v5h-8z" />
     <path
         android:fillColor="#94A3B8"
-        android:pathData="M73,44h8v1.5h-8z M74,78h6v1.5h-6z" />
-    <!-- High-Speed Lightning Bond (Multi-Path Protocol) -->
+        android:pathData="M32,71h18c1.1,0 2,0.9 2,2H30c0,-1.1 0.9,-2 2,-2z" />
+
+    <!-- SMARTPHONE (Right, centered within safe zone) -->
+    <!-- Phone Outer Body with rounded corners -->
     <path
-        android:fillColor="#FACC15"
-        android:pathData="M54,42L44,55h7l-3,11 12,-14h-8l4,-10z" />
+        android:fillColor="#0F172A"
+        android:strokeColor="#60A5FA"
+        android:strokeWidth="1.5"
+        android:pathData="M60,36h20c2.7,0 5,2.3 5,5v31c0,2.7 -2.3,5 -5,5H60c-2.7,0 -5,-2.3 -5,-5V41c0,-2.7 2.3,-5 5,-5z" />
+
+    <!-- Phone Screen Inner -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M58,41h24v27H58z" />
+
+    <!-- Phone Screen Wallpaper / UI Card -->
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M61,44h18v12H61z" />
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M63,47h14v2H63z M63,51h10v2H63z" />
+
+    <!-- Phone Speaker Notch & Home Pill -->
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M67,38.5h6v1.2h-6z" />
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M67,73.5h6v1.5h-6z" />
+
+    <!-- HIGH-SPEED LIGHTNING BOLT BRIDGE (Connecting PC & Phone) -->
+    <!-- Outer Glow Behind Lightning -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M52,38L42,54h9l-4,16 17,-19h-10l5,-13z" />
+    <!-- Bright Foreground Core Lightning Bolt -->
+    <path
+        android:fillColor="#FDE047"
+        android:pathData="M51.5,40L43.5,53h8l-3.5,14 14.5,-17h-9l4.5,-10z" />
+
+    <!-- Data Waves / Sync Radiations -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M48,32a3,3 0 1,0 0.1,0z" />
+    <path
+        android:fillColor="#60A5FA"
+        android:pathData="M58,70a3,3 0 1,0 0.1,0z" />
 </vector>
