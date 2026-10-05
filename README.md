@@ -22,9 +22,9 @@ Get the latest production-ready builds directly from this repository:
 
 ### Verification & Checksums (SHA-256)
 - **`ConnectToWindow-v1.1.0.apk`**:
-  `A59ABFA8FF624E4D84DC0725DB2D40EF36AB398B89D07C305308EE0E985D2954`
+  `58D8EB6D0010957905ACDB6D2AE99DAABBEBF0127C9ADD6D96825E0695A4CAE6`
 - **`ConnectToWindow-Desktop-v1.1.0-win-x64.zip`**:
-  `273D276536833524FCDD3D27AE3AEEC6E1E4CB39680E26CF77859D951CFAD0E7`
+  `4B725DDE918D71DEE263B6CB282269C889F34AE049D7425A6506649E2D130FF2`
 
 ---
 
@@ -47,17 +47,21 @@ When you install or extract the Windows app:
 
 ## 🌟 Key Highlights
 
-- **🔗 Device Management & Prominent Connection Controls**:
-  - Target Device Selector dropdown in the desktop header and mobile dashboard to choose between physical and virtual devices.
-  - 1-click **`🔗 Connect`**, **`⚡ Disconnect`**, **`➕ Pair Device (PIN)`**, and **`✕ Unpair`** buttons directly visible on screen.
-  - Manual IP Direct Connect with custom port support (`192.168.x.x:42424`).
-- **🎛️ Independent Protocol Connection Settings & Toggles**:
-  - Explicitly toggle, disconnect, or reconnect individual transport channels:
-    - **USB ADB Bridge**: Disable/enable ADB scanning and USB pipes.
-    - **Wi-Fi LAN (Port 42424)**: Start/stop TCP server or disconnect wireless sockets.
-    - **Bluetooth RFCOMM**: Toggle RFCOMM listener and auto-pairing.
+- **📱 Dedicated "Devices & Pairing Hub" (Desktop & Mobile)**:
+  - **Live Dynamic QR Code**: Desktop app generates a live, high-contrast QR code (`QRCoder`) encoding the local machine name, IP, port, and security PIN for instant smartphone pairing.
+  - **QR Deep Link Scanner / Parser**: Mobile app automatically parses `connecttowindow://pair?name=...&ip=...&port=...&pin=...` with 1-tap `📋 Paste & Connect`.
+  - **6-Digit Security PIN Matching**: Segmented PIN display `[ 8 ][ 4 ][ 9 ] - [ 2 ][ 0 ][ 1 ]` with 1-tap PIN clipboard copying and reciprocal verification.
+  - **Active Device Hero Card**: Displays live connection status, protocol, throughput, and provides 1-tap **`🔄 Force Sync Now`** (instant directory & clipboard sync), **`⚡ Disconnect`**, and **`✕ Unpair Device`**.
+  - **📡 UDP Radar Discovery (Port 42425)**: Automatic discovery of running desktop apps on the local subnet with 1-tap connection.
+  - **Paired Devices Management**: View previously paired PCs and phones, with options to reconnect or forget credentials.
+  - **5-Tab Ergonomic Mobile Navigation**: Seamlessly navigate between `⚡ Transfers`, `💻 PC Files`, `📱 Devices`, `🎮 Remote`, and `📋 Clipboard`.
+- **🎛️ Independent Protocol Hardware Controls & Toggles**:
+  - Explicitly toggle, disconnect, or reconnect individual transport channels on both PC and phone:
+    - **⚡ USB ADB Bridge**: Disable/enable ADB reverse and direct USB forwarding pipes.
+    - **📶 Wi-Fi LAN (Port 42424)**: Start/stop TCP server or disconnect wireless sockets.
+    - **📱 Bluetooth RFCOMM**: Toggle RFCOMM listener and SPP serial pairing.
 - **🧪 Multi-Device Simulation & Failover Lab**:
-  - Built-in simulation engine allows spawning virtual mobile devices (`Simulated Galaxy Tab S9`, `Simulated Pixel 8 Pro`) directly in memory.
+  - Built-in simulation sandbox allows spawning virtual mobile devices (`Simulated Galaxy Tab S9`, `Simulated Pixel 8 Pro`) directly in memory.
   - Virtual devices generate realistic Android directory trees (`/storage/emulated/0`, `Movies`, `DCIM`, `Documents`) and stream high-speed test chunks (~80 MB/s).
   - Test mid-transfer channel drops with a single click to visually observe zero-loss automatic failover to surviving channels.
 - **⚡ Multi-Protocol Bonding**: Transmits chunks in parallel across **Wi-Fi (LAN / Wi-Fi Direct)**, **USB (ADB Bridge / Reverse Tunnel)**, and **Bluetooth (RFCOMM SPP)** simultaneously to maximize total bandwidth (up to 140+ MB/s over USB 3.0).

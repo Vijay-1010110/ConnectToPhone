@@ -82,6 +82,19 @@ class MainActivity : ComponentActivity() {
         // 3. Start UDP zero-touch discovery beacon
         udpBeacon = UdpDiscoveryBeacon(deviceId, deviceName, 42424).apply {
             onPeerDiscovered = { peer ->
+                if (peer.remoteIpAddress.isNotEmpty()) {
+                    runOnUiThread {
+                        val existing = AppState.detectedNearbyPcs.find { it.ip == peer.remoteIpAddress }
+                        if (existing == null) {
+                            AppState.detectedNearbyPcs.add(NearbyPcInfo(
+                                name = peer.deviceName,
+                                ip = peer.remoteIpAddress,
+                                port = peer.tcpPort,
+                                transport = "Wi-Fi LAN"
+                            ))
+                        }
+                    }
+                }
                 if (!AppState.isConnected && peer.remoteIpAddress.isNotEmpty()) {
                     lifecycleScope.launch(Dispatchers.IO) {
                         try {
@@ -102,7 +115,31 @@ class MainActivity : ComponentActivity() {
             probeAndConnect(deviceId, deviceName)
         }
 
-        // 4b. Wire Bluetooth controls & runtime permissions
+        // 4b. Wire Direct IP connect trigger
+        AppState.triggerDirectIpConnectCallback = { ip, port, _ ->
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val result = tcpServer?.connectToPeer(ip, port)
+                    result?.getOrNull()?.let { transport ->
+                        setupTransportHandlers(transport)
+                        sendHandshakeSyn(transport, deviceId, deviceName)
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "Connected to $ip:$port ⚡", Toast.LENGTH_SHORT).show()
+                        }
+                    } ?: run {
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "Could not reach PC at $ip:$port", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Connection error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        // 4c. Wire Bluetooth controls & runtime permissions
         checkAndRequestBluetoothPermissions()
         AppState.triggerBluetoothConnectCallback = { targetAddress ->
             lifecycleScope.launch(Dispatchers.IO) {
@@ -147,6 +184,7 @@ class MainActivity : ComponentActivity() {
         if (targetTab >= 0) {
             AppState.selectedNavigationTab = targetTab
         }
+        handleDeepLinkPairIntent(intent)
         handleShareIntent(intent)
 
         // 8. Daily/Periodic cache LRU cleanup loop (runs every 6 hours)
@@ -165,6 +203,40 @@ class MainActivity : ComponentActivity() {
                 ) {
                     MainNavigation()
                 }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDeepLinkPairIntent(intent)
+        handleShareIntent(intent)
+        val targetTab = intent.getIntExtra("TARGET_TAB", -1)
+        if (targetTab >= 0) {
+            AppState.selectedNavigationTab = targetTab
+        }
+    }
+
+    private fun handleDeepLinkPairIntent(intent: Intent?) {
+        val uri: Uri? = intent?.data
+        if (uri != null && uri.scheme == "connecttowindow" && uri.host == "pair") {
+            val name = uri.getQueryParameter("name") ?: "Windows PC"
+            val ip = uri.getQueryParameter("ip")
+            val portStr = uri.getQueryParameter("port")
+            val pin = uri.getQueryParameter("pin")
+            val port = portStr?.toIntOrNull() ?: 42424
+
+            if (!ip.isNullOrEmpty()) {
+                AppState.targetPcName = name
+                AppState.targetPcIp = ip
+                AppState.targetPcPort = port
+                if (!pin.isNullOrEmpty()) {
+                    AppState.pairWithPin(pin)
+                }
+                AppState.selectedNavigationTab = 2 // Switch to Devices & Pairing tab
+                Toast.makeText(this, "QR Code Paired with $name ($ip)! Connecting...", Toast.LENGTH_LONG).show()
+                AppState.connectToDirectIp(ip, port, pin)
             }
         }
     }
@@ -202,50 +274,56 @@ class MainActivity : ComponentActivity() {
             if (AppState.isConnected && AppState.activeTransportInstance?.isConnected == true) return@launch
 
             // 1. Try USB ADB reverse tunnel (127.0.0.1:42425)
-            try {
-                val usbRes = tcpServer?.connectToPeer("127.0.0.1", 42425)
-                val usbTransport = usbRes?.getOrNull()
-                if (usbTransport != null && usbTransport.isConnected) {
-                    setupTransportHandlers(usbTransport)
-                    sendHandshakeSyn(usbTransport, deviceId, deviceName)
-                    return@launch
-                }
-            } catch (_: Exception) {}
-
-            // 2. Try known PC Wi-Fi IP candidates
-            val candidates = listOf("192.168.6.225", "10.0.2.2")
-            for (ip in candidates) {
+            if (AppState.isUsbProtocolEnabled) {
                 try {
-                    val wifiRes = tcpServer?.connectToPeer(ip, 42424)
-                    val wifiTransport = wifiRes?.getOrNull()
-                    if (wifiTransport != null && wifiTransport.isConnected) {
-                        setupTransportHandlers(wifiTransport)
-                        sendHandshakeSyn(wifiTransport, deviceId, deviceName)
+                    val usbRes = tcpServer?.connectToPeer("127.0.0.1", 42425)
+                    val usbTransport = usbRes?.getOrNull()
+                    if (usbTransport != null && usbTransport.isConnected) {
+                        setupTransportHandlers(usbTransport)
+                        sendHandshakeSyn(usbTransport, deviceId, deviceName)
                         return@launch
                     }
                 } catch (_: Exception) {}
             }
 
-            // 3. Try paired Bluetooth devices
-            try {
-                val btAdapter = (getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
-                    ?: BluetoothAdapter.getDefaultAdapter()
-                if (btAdapter != null && btAdapter.isEnabled) {
-                    val paired = btAdapter.bondedDevices
-                    for (dev in paired) {
-                        try {
-                            val socket = dev.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
-                            socket.connect()
-                            if (socket.isConnected) {
-                                val transport = BluetoothRfcommTransport(socket)
-                                setupTransportHandlers(transport)
-                                sendHandshakeSyn(transport, deviceId, deviceName)
-                                return@launch
-                            }
-                        } catch (_: Exception) {}
-                    }
+            // 2. Try known PC Wi-Fi IP candidates
+            if (AppState.isWifiProtocolEnabled) {
+                val candidates = listOf(AppState.targetPcIp, "192.168.250.225", "192.168.6.225", "10.0.2.2").distinct()
+                for (ip in candidates) {
+                    try {
+                        val wifiRes = tcpServer?.connectToPeer(ip, AppState.targetPcPort)
+                        val wifiTransport = wifiRes?.getOrNull()
+                        if (wifiTransport != null && wifiTransport.isConnected) {
+                            setupTransportHandlers(wifiTransport)
+                            sendHandshakeSyn(wifiTransport, deviceId, deviceName)
+                            return@launch
+                        }
+                    } catch (_: Exception) {}
                 }
-            } catch (_: Exception) {}
+            }
+
+            // 3. Try paired Bluetooth devices
+            if (AppState.isBluetoothProtocolEnabled) {
+                try {
+                    val btAdapter = (getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+                        ?: BluetoothAdapter.getDefaultAdapter()
+                    if (btAdapter != null && btAdapter.isEnabled) {
+                        val paired = btAdapter.bondedDevices
+                        for (dev in paired) {
+                            try {
+                                val socket = dev.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+                                socket.connect()
+                                if (socket.isConnected) {
+                                    val transport = BluetoothRfcommTransport(socket)
+                                    setupTransportHandlers(transport)
+                                    sendHandshakeSyn(transport, deviceId, deviceName)
+                                    return@launch
+                                }
+                            } catch (_: Exception) {}
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
         }
     }
 
@@ -368,15 +446,6 @@ class MainActivity : ComponentActivity() {
         ))
         // Request PC root drives
         AppState.requestPcDirectory("/")
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        val targetTab = intent.getIntExtra("TARGET_TAB", -1)
-        if (targetTab >= 0) {
-            AppState.selectedNavigationTab = targetTab
-        }
-        handleShareIntent(intent)
     }
 
     private fun handleShareIntent(intent: Intent?) {

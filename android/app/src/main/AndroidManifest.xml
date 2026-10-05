@@ -55,6 +55,14 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
+
+            <!-- Deep Link QR Code Scanner Target: connecttowindow://pair -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="connecttowindow" android:host="pair" />
+            </intent-filter>
         </activity>
 
         <provider

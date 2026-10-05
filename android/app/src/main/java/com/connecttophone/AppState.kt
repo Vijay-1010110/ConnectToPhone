@@ -25,6 +25,14 @@ data class RemoteFileItem(
     val sizeDisplay: String
 )
 
+data class NearbyPcInfo(
+    val name: String,
+    val ip: String,
+    val port: Int = 42424,
+    val transport: String = "Wi-Fi LAN",
+    val lastSeen: Long = System.currentTimeMillis()
+)
+
 data class TransferHistoryItem(
     val id: String = UUID.randomUUID().toString(),
     val fileName: String,
@@ -59,6 +67,12 @@ object AppState {
     var triggerBluetoothSettingsCallback: (() -> Unit)? = null
 
     var targetPcName by mutableStateOf("Windows PC")
+    var targetPcIp by mutableStateOf("192.168.250.225")
+    var targetPcPort by mutableStateOf(42424)
+    var phonePairingPin by mutableStateOf("582910")
+    val detectedNearbyPcs = mutableStateListOf<NearbyPcInfo>()
+    var triggerDirectIpConnectCallback: ((String, Int, String?) -> Unit)? = null
+
     var isWifiProtocolEnabled by mutableStateOf(true)
     var isUsbProtocolEnabled by mutableStateOf(true)
     var isBluetoothProtocolEnabled by mutableStateOf(true)
@@ -127,6 +141,42 @@ object AppState {
             isPairingDialogVisible = false
             reconnectPc()
         }
+    }
+
+    fun connectToDirectIp(ip: String, port: Int = 42424, pin: String? = null) {
+        targetPcIp = ip
+        targetPcPort = port
+        if (!pin.isNullOrEmpty() && pin.length == 6) {
+            isPairedWithPc = true
+        }
+        triggerDirectIpConnectCallback?.invoke(ip, port, pin)
+    }
+
+    fun forceSyncNow(context: Context) {
+        if (!isConnected || activeTransportInstance?.isConnected != true) {
+            Toast.makeText(context, "PC not connected yet. Connect first.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val transport = activeTransportInstance ?: return
+        val currentScope = scope ?: CoroutineScope(Dispatchers.IO)
+        currentScope.launch {
+            try {
+                // 1. Refresh directory
+                requestPcDirectory("/")
+                // 2. Push latest clipboard if available
+                if (clipboardHistory.isNotEmpty()) {
+                    val latest = clipboardHistory.first()
+                    val payload = ClipboardPayload(contentHash = latest.hashCode().toLong(), text = latest, timestamp = System.currentTimeMillis())
+                    transport.sendFrame(BinaryFrame(
+                        type = FrameType.CLIPBOARD_SYNC,
+                        sessionId = MainActivity.activeSessionId,
+                        payload = payload.toJson().toByteArray(Charsets.UTF_8)
+                    ))
+                }
+            } catch (_: Exception) {}
+        }
+        Toast.makeText(context, "⚡ Force Sync complete! Files and clipboard refreshed.", Toast.LENGTH_SHORT).show()
     }
 
     fun loadExistingFiles(context: Context) {

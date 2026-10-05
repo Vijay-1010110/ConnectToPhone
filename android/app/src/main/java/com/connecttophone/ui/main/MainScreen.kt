@@ -1,7 +1,11 @@
 package com.connecttophone.ui.main
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -20,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -94,7 +99,11 @@ fun MainScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
+                    Column(
+                        modifier = Modifier.clickable {
+                            AppState.selectedNavigationTab = 2
+                        }
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("ConnectToWindow", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(Modifier.width(8.dp))
@@ -108,7 +117,7 @@ fun MainScreen(
                             )
                         }
                         Text(
-                            if (AppState.isConnected) "Connected: ${AppState.connectedDeviceName}" else "Waiting for PC / USB / Wi-Fi...",
+                            if (AppState.isConnected) "Connected: ${AppState.connectedDeviceName.ifEmpty { AppState.targetPcName }}" else "Waiting for PC • Tap to Pair...",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -118,10 +127,18 @@ fun MainScreen(
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer,
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.padding(end = 12.dp)
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .clickable {
+                                if (AppState.isConnected) {
+                                    AppState.forceSyncNow(context)
+                                } else {
+                                    AppState.selectedNavigationTab = 2
+                                }
+                            }
                     ) {
                         Text(
-                            text = if (AppState.currentSpeedMb > 0) "⚡ %.1f MB/s".format(AppState.currentSpeedMb) else "⚡ Ready",
+                            text = if (AppState.isConnected) (if (AppState.currentSpeedMb > 0) "⚡ %.1f MB/s".format(AppState.currentSpeedMb) else "⚡ Sync") else "📱 Pair PC",
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
@@ -153,8 +170,8 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { AppState.selectedNavigationTab = 2 },
-                    icon = { Text("📋", fontSize = 18.sp) },
-                    label = { Text("Clipboard") }
+                    icon = { Text("📱", fontSize = 18.sp) },
+                    label = { Text("Devices") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 3,
@@ -165,8 +182,8 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = selectedTab == 4,
                     onClick = { AppState.selectedNavigationTab = 4 },
-                    icon = { Text("💾", fontSize = 18.sp) },
-                    label = { Text("Storage") }
+                    icon = { Text("📋", fontSize = 18.sp) },
+                    label = { Text("Clipboard") }
                 )
             }
         }
@@ -190,14 +207,18 @@ fun MainScreen(
                     onNavigate = { AppState.requestPcDirectory(it) },
                     onPull = { path, isPreview -> AppState.pullFileFromPc(path, isPreview, context) }
                 )
-                2 -> ClipboardTab(
+                2 -> DevicesTab(
+                    context = context,
+                    coroutineScope = coroutineScope
+                )
+                3 -> RemoteControlTab(context = context)
+                4 -> ClipboardTab(
                     context = context,
                     autoSync = autoClipboardSync,
                     onAutoSyncChange = { autoClipboardSync = it },
                     history = AppState.clipboardHistory
                 )
-                3 -> RemoteControlTab(context = context)
-                4 -> StorageTab(context = context)
+                5 -> StorageTab(context = context)
             }
         }
     }
@@ -214,153 +235,58 @@ fun TransfersTab(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            // Prominent Device Connection & Protocol Management Card
+            // Sleek Connection Summary Bar linking to Devices Hub
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(12.dp)
+                colors = CardDefaults.cardColors(
+                    containerColor = if (AppState.isConnected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { AppState.selectedNavigationTab = 2 }
             ) {
-                Column(Modifier.padding(14.dp)) {
-                    // Header: Connected Target PC & Live Status
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("💻 Connected Target Device", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(
-                                text = if (AppState.isConnected) AppState.connectedDeviceName.ifEmpty { AppState.targetPcName } else "No Device Connected",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                maxLines = 1
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(
+                                if (AppState.isConnected) Color(0xFF10B981) else Color(0xFFEF4444),
+                                CircleShape
                             )
-                        }
-                        Surface(
-                            color = if (AppState.isConnected) Color(0xFF10B981) else Color(0xFFEF4444),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                text = if (AppState.isConnected) "Connected ⚡" else "Disconnected",
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = if (AppState.isConnected) "Connected: ${AppState.connectedDeviceName.ifEmpty { AppState.targetPcName }}" else "Disconnected • Tap to Pair PC",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = if (AppState.isConnected) "Via ${AppState.activeProtocolName} • Tap to manage pairing & devices" else "Scan QR, enter PIN or connect via Wi-Fi/USB",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-
-                    Spacer(Modifier.height(10.dp))
-
-                    // Connection Action Buttons: Reconnect/Disconnect, Pair New PC, Unpair
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        if (AppState.isConnected) {
-                            Button(
-                                onClick = { AppState.disconnectPc() },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF991B1B)),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("⚡ Disconnect", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        } else {
-                            Button(
-                                onClick = { AppState.reconnectPc() },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("🔄 Connect PC", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
+                    if (AppState.isConnected) {
+                        FilledTonalButton(
+                            onClick = { AppState.forceSyncNow(context) },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("🔄 Sync", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
-
+                    } else {
                         Button(
-                            onClick = { AppState.isPairingDialogVisible = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3F3F46)),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                            modifier = Modifier.weight(1.1f)
+                            onClick = { AppState.selectedNavigationTab = 2 },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            Text("➕ Pair (PIN)", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text("📱 Pair", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
-
-                        OutlinedButton(
-                            onClick = {
-                                AppState.unpairPc()
-                                Toast.makeText(context, "Unpaired from PC.", Toast.LENGTH_SHORT).show()
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                            modifier = Modifier.weight(0.9f)
-                        ) {
-                            Text("✕ Unpair", fontSize = 11.sp)
-                        }
-                    }
-
-                    Spacer(Modifier.height(10.dp))
-
-                    // Protocol Toggle Switches Row
-                    Text("Protocol Control & Independent Toggles:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Surface(
-                            color = if (AppState.isUsbProtocolEnabled) Color(0xFF1E3A8A) else Color(0xFF27272A),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f).clickable { AppState.toggleUsbProtocol() }
-                        ) {
-                            Column(Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("⚡ USB", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (AppState.isUsbProtocolEnabled) Color(0xFF93C5FD) else Color(0xFF9CA3AF))
-                                Text(if (AppState.isUsbProtocolEnabled) "Enabled" else "Disabled", fontSize = 9.sp, color = if (AppState.isUsbProtocolEnabled) Color(0xFF60A5FA) else Color(0xFF6B7280))
-                            }
-                        }
-
-                        Surface(
-                            color = if (AppState.isWifiProtocolEnabled) Color(0xFF064E3B) else Color(0xFF27272A),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f).clickable { AppState.toggleWifiProtocol() }
-                        ) {
-                            Column(Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("📶 Wi-Fi", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (AppState.isWifiProtocolEnabled) Color(0xFF6EE7B7) else Color(0xFF9CA3AF))
-                                Text(if (AppState.isWifiProtocolEnabled) "Enabled" else "Disabled", fontSize = 9.sp, color = if (AppState.isWifiProtocolEnabled) Color(0xFF34D399) else Color(0xFF6B7280))
-                            }
-                        }
-
-                        Surface(
-                            color = if (AppState.isBluetoothProtocolEnabled) Color(0xFF312E81) else Color(0xFF27272A),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f).clickable { AppState.toggleBluetoothProtocol() }
-                        ) {
-                            Column(Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("📱 BT", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (AppState.isBluetoothProtocolEnabled) Color(0xFFC7D2FE) else Color(0xFF9CA3AF))
-                                Text(if (AppState.isBluetoothProtocolEnabled) "Enabled" else "Disabled", fontSize = 9.sp, color = if (AppState.isBluetoothProtocolEnabled) Color(0xFF818CF8) else Color(0xFF6B7280))
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // Multi-Device Simulation & Failover Test Button
-                    OutlinedButton(
-                        onClick = {
-                            Toast.makeText(context, "Testing failover: Simulating Wi-Fi drop -> fallback to USB/BT...", Toast.LENGTH_LONG).show()
-                            AppState.disconnectPc()
-                            coroutineScope.launch {
-                                delay(1500)
-                                AppState.reconnectPc()
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("🧪 Simulate Channel Drop (Test Failover)", fontSize = 11.sp)
                     }
                 }
             }
@@ -436,92 +362,12 @@ fun TransfersTab(
         }
 
         item {
-            // Dedicated Bluetooth Connection & Pairing Card
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(12.dp)
+            OutlinedButton(
+                onClick = { AppState.selectedNavigationTab = 5 },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp)
             ) {
-                Column(Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("📶 Bluetooth Connection & Devices", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Surface(
-                            color = if (AppState.isBluetoothConnected) Color(0xFF10B981) else if (AppState.isBluetoothEnabled) Color(0xFF3B82F6) else Color(0xFF6B7280),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                text = if (AppState.isBluetoothConnected) "Connected" else if (AppState.isBluetoothEnabled) "Enabled" else "Disabled",
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    if (AppState.pairedBluetoothDevices.isNotEmpty()) {
-                        Text("Paired PC Devices:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(4.dp))
-                        AppState.pairedBluetoothDevices.forEach { devString ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 3.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    devString,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Button(
-                                    onClick = { AppState.triggerBluetoothConnectCallback?.invoke(devString) },
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
-                                ) {
-                                    Text("Connect", fontSize = 11.sp)
-                                }
-                            }
-                        }
-                    } else {
-                        Text(
-                            if (AppState.isBluetoothEnabled) "No paired PC detected. Tap 'Pair New PC' below to open Bluetooth settings." else "Bluetooth is disabled on your device. Please turn on Bluetooth.",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { AppState.triggerBluetoothConnectCallback?.invoke(null) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("🔄 Connect Paired", fontSize = 12.sp)
-                        }
-                        Button(
-                            onClick = { AppState.triggerBluetoothSettingsCallback?.invoke() },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                        ) {
-                            Text("⚙ Pair New PC", fontSize = 12.sp)
-                        }
-                    }
-                }
+                Text("💾 View Cached Previews & Storage Management (${CacheManager.getStorageInfo(context).cacheUsedDisplay})", fontSize = 12.sp)
             }
         }
 
@@ -614,6 +460,648 @@ fun TransfersTab(
                 Text("🔔")
                 Spacer(Modifier.width(8.dp))
                 Text("Show Live Speed in Android Status Bar")
+            }
+        }
+    }
+}
+
+fun parsePairUrlAndConnect(url: String, context: Context) {
+    try {
+        val uri = Uri.parse(url)
+        val ip = uri.getQueryParameter("ip") ?: if (url.contains(".") && !url.contains("/")) url.trim() else null
+        val name = uri.getQueryParameter("name") ?: "Windows PC"
+        val port = uri.getQueryParameter("port")?.toIntOrNull() ?: 42424
+        val pin = uri.getQueryParameter("pin")
+        if (!ip.isNullOrEmpty()) {
+            AppState.targetPcName = name
+            AppState.targetPcIp = ip
+            AppState.targetPcPort = port
+            if (!pin.isNullOrEmpty()) {
+                AppState.pairWithPin(pin)
+            }
+            AppState.connectToDirectIp(ip, port, pin)
+            Toast.makeText(context, "Connecting to $name ($ip:$port)...", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Invalid pairing URL or IP", Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: Exception) {
+        Toast.makeText(context, "Error parsing pairing URL: ${e.message}", Toast.LENGTH_SHORT).show()
+    }
+}
+
+@Composable
+fun DevicesTab(
+    context: Context,
+    coroutineScope: CoroutineScope
+) {
+    var manualPinInput by remember { mutableStateOf("") }
+    var manualIpInput by remember { mutableStateOf(AppState.targetPcIp.ifEmpty { "192.168.250.225" }) }
+    var manualPortInput by remember { mutableStateOf(AppState.targetPcPort.toString()) }
+    var qrLinkInput by remember { mutableStateOf("") }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // 1. Hero Device Status Card
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (AppState.isConnected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, if (AppState.isConnected) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (AppState.isConnected) Color(0xFF10B981).copy(alpha = 0.2f) else Color(0xFFEF4444).copy(alpha = 0.2f),
+                            modifier = Modifier.size(54.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(if (AppState.isConnected) "💻" else "📡", fontSize = 28.sp)
+                            }
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = if (AppState.isConnected) AppState.connectedDeviceName.ifEmpty { AppState.targetPcName } else "No Device Connected",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 17.sp,
+                                    maxLines = 1
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(
+                                            if (AppState.isConnected) Color(0xFF10B981) else Color(0xFFEF4444),
+                                            CircleShape
+                                        )
+                                )
+                            }
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = if (AppState.isConnected)
+                                    "Active: ${AppState.activeProtocolName} • Multi-Path Bonded"
+                                else
+                                    "Waiting for PC connection over USB, Wi-Fi or Bluetooth",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    if (AppState.isConnected) {
+                        // Force Sync button
+                        Button(
+                            onClick = { AppState.forceSyncNow(context) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Text("🔄 Force Sync Now (Files & Clipboard)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    AppState.disconnectPc()
+                                    Toast.makeText(context, "Disconnected from PC.", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF991B1B)),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("⚡ Disconnect", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    AppState.unpairPc()
+                                    Toast.makeText(context, "Unpaired PC successfully.", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("✕ Unpair", fontSize = 12.sp)
+                            }
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                AppState.reconnectPc()
+                                Toast.makeText(context, "Scanning & connecting to PC...", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                        ) {
+                            Text("🔄 Connect / Reconnect PC", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Pair New PC Hub (Phone's PIN, PC PIN, QR Code Link, Direct IP)
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("🔐 Pair New Windows PC", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Pairing authorizes encrypted end-to-end file transfers, clipboard sharing, and remote touch control.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+
+                    // A. Phone's 6-Digit PIN Display
+                    Text("1. This Phone's Pairing PIN:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    val pin = AppState.phonePairingPin.padEnd(6, '0')
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        for (i in 0 until 3) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                                modifier = Modifier.size(38.dp, 44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(pin.getOrNull(i)?.toString() ?: "-", fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                                }
+                            }
+                            if (i < 2) Spacer(Modifier.width(6.dp))
+                        }
+                        Text("  -  ", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        for (i in 3 until 6) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                                modifier = Modifier.size(38.dp, 44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(pin.getOrNull(i)?.toString() ?: "-", fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                                }
+                            }
+                            if (i < 5) Spacer(Modifier.width(6.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                clipboard?.setPrimaryClip(ClipData.newPlainText("Pairing PIN", AppState.phonePairingPin))
+                                Toast.makeText(context, "PIN copied to clipboard: ${AppState.phonePairingPin}", Toast.LENGTH_SHORT).show()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text("📋 Copy Phone PIN", fontSize = 11.sp)
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Spacer(Modifier.height(14.dp))
+
+                    // B. Enter PC PIN
+                    Text("2. Or Enter PC's 6-Digit PIN:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = manualPinInput,
+                            onValueChange = { if (it.length <= 6) manualPinInput = it },
+                            placeholder = { Text("e.g. 849201", fontSize = 12.sp) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Button(
+                            onClick = {
+                                if (manualPinInput.length == 6) {
+                                    AppState.pairWithPin(manualPinInput)
+                                    Toast.makeText(context, "Paired with PC using PIN $manualPinInput!", Toast.LENGTH_SHORT).show()
+                                    manualPinInput = ""
+                                } else {
+                                    Toast.makeText(context, "Please enter full 6-digit PIN", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Pair PIN", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Spacer(Modifier.height(14.dp))
+
+                    // C. QR Code URL / Deep Link Input
+                    Text("3. Scan Desktop QR Code or Paste Link:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = qrLinkInput,
+                        onValueChange = { qrLinkInput = it },
+                        placeholder = { Text("connecttowindow://pair?name=...&ip=...&pin=...", fontSize = 11.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                val clip = clipboard?.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
+                                if (clip.isNotEmpty()) {
+                                    qrLinkInput = clip
+                                    parsePairUrlAndConnect(clip, context)
+                                } else {
+                                    Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("📋 Paste & Pair", fontSize = 11.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                if (qrLinkInput.isNotEmpty()) {
+                                    parsePairUrlAndConnect(qrLinkInput, context)
+                                } else {
+                                    Toast.makeText(context, "Please enter or paste pair URL", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Connect Link", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Spacer(Modifier.height(14.dp))
+
+                    // D. Direct IP Manual Connect
+                    Text("4. Direct IP Manual Connect (Wi-Fi / Reverse ADB):", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = manualIpInput,
+                            onValueChange = { manualIpInput = it },
+                            placeholder = { Text("192.168.x.x or 127.0.0.1", fontSize = 12.sp) },
+                            singleLine = true,
+                            modifier = Modifier.weight(2f)
+                        )
+                        OutlinedTextField(
+                            value = manualPortInput,
+                            onValueChange = { manualPortInput = it },
+                            placeholder = { Text("42424", fontSize = 12.sp) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Button(
+                        onClick = {
+                            val port = manualPortInput.toIntOrNull() ?: 42424
+                            if (manualIpInput.isNotEmpty()) {
+                                AppState.connectToDirectIp(manualIpInput.trim(), port)
+                                Toast.makeText(context, "Connecting directly to ${manualIpInput.trim()}:$port...", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Please enter valid IP address", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("⚡ Direct Connect IP", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // 3. Discovered Nearby PCs (UDP Radar Discovery)
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("📡 Discovered Nearby PCs (Radar)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "UDP 42425",
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    if (AppState.detectedNearbyPcs.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("📡", fontSize = 28.sp)
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    "Scanning local network for ConnectToPhone desktops...",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Ensure your PC and phone are on the same Wi-Fi network or connected via USB.",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.height(10.dp))
+                                OutlinedButton(
+                                    onClick = {
+                                        AppState.reconnectPc()
+                                        Toast.makeText(context, "Rescanning subnet...", Toast.LENGTH_SHORT).show()
+                                    },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("🔄 Rescan Radar", fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    } else {
+                        AppState.detectedNearbyPcs.forEach { pc ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("💻", fontSize = 24.sp)
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(pc.name, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text("${pc.ip}:${pc.port} • ${pc.transport}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Button(
+                                        onClick = {
+                                            AppState.connectToDirectIp(pc.ip, pc.port)
+                                            Toast.makeText(context, "Connecting to ${pc.name}...", Toast.LENGTH_SHORT).show()
+                                        },
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                    ) {
+                                        Text("Connect ⚡", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Bluetooth Devices & Pairing Card
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("📶 Bluetooth Devices & SPP Serial", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Surface(
+                            color = if (AppState.isBluetoothConnected) Color(0xFF10B981) else if (AppState.isBluetoothEnabled) Color(0xFF3B82F6) else Color(0xFF6B7280),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (AppState.isBluetoothConnected) "Connected" else if (AppState.isBluetoothEnabled) "Enabled" else "Disabled",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    if (AppState.pairedBluetoothDevices.isNotEmpty()) {
+                        Text("Paired Bluetooth PCs:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(4.dp))
+                        AppState.pairedBluetoothDevices.forEach { devString ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 3.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    devString,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(
+                                    onClick = { AppState.triggerBluetoothConnectCallback?.invoke(devString) },
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                                ) {
+                                    Text("Connect", fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    } else {
+                        Text(
+                            if (AppState.isBluetoothEnabled) "No paired PC detected. Tap 'Pair New PC' below to open Android Bluetooth settings." else "Bluetooth is turned off on this device. Please turn on Bluetooth.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { AppState.triggerBluetoothConnectCallback?.invoke(null) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("🔄 Connect Paired", fontSize = 11.sp)
+                        }
+                        Button(
+                            onClick = { AppState.triggerBluetoothSettingsCallback?.invoke() },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Text("⚙ Pair New PC", fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5. Hardware Protocol Toggles
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("⚙️ Hardware Transports & Protocol Toggles", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Enable or disable individual physical channels to force specific routes or test failover:",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            color = if (AppState.isUsbProtocolEnabled) Color(0xFF1E3A8A) else Color(0xFF27272A),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).clickable { AppState.toggleUsbProtocol() }
+                        ) {
+                            Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("⚡ USB", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (AppState.isUsbProtocolEnabled) Color(0xFF93C5FD) else Color(0xFF9CA3AF))
+                                Spacer(Modifier.height(2.dp))
+                                Text(if (AppState.isUsbProtocolEnabled) "Enabled" else "Disabled", fontSize = 10.sp, color = if (AppState.isUsbProtocolEnabled) Color(0xFF60A5FA) else Color(0xFF6B7280))
+                            }
+                        }
+
+                        Surface(
+                            color = if (AppState.isWifiProtocolEnabled) Color(0xFF064E3B) else Color(0xFF27272A),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).clickable { AppState.toggleWifiProtocol() }
+                        ) {
+                            Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("📶 Wi-Fi", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (AppState.isWifiProtocolEnabled) Color(0xFF6EE7B7) else Color(0xFF9CA3AF))
+                                Spacer(Modifier.height(2.dp))
+                                Text(if (AppState.isWifiProtocolEnabled) "Enabled" else "Disabled", fontSize = 10.sp, color = if (AppState.isWifiProtocolEnabled) Color(0xFF34D399) else Color(0xFF6B7280))
+                            }
+                        }
+
+                        Surface(
+                            color = if (AppState.isBluetoothProtocolEnabled) Color(0xFF312E81) else Color(0xFF27272A),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).clickable { AppState.toggleBluetoothProtocol() }
+                        ) {
+                            Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("📱 BT", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (AppState.isBluetoothProtocolEnabled) Color(0xFFC7D2FE) else Color(0xFF9CA3AF))
+                                Spacer(Modifier.height(2.dp))
+                                Text(if (AppState.isBluetoothProtocolEnabled) "Enabled" else "Disabled", fontSize = 10.sp, color = if (AppState.isBluetoothProtocolEnabled) Color(0xFF818CF8) else Color(0xFF6B7280))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 6. Failover Simulation Lab
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("🧪 Multi-Path Failover Simulation", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Test multi-channel resilience. Tapping below simulates an instant Wi-Fi/cable disconnect. The active session will automatically failover to the next available route without file corruption.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedButton(
+                        onClick = {
+                            Toast.makeText(context, "Testing failover: Simulating Wi-Fi drop -> fallback to USB/BT...", Toast.LENGTH_LONG).show()
+                            AppState.disconnectPc()
+                            coroutineScope.launch {
+                                delay(1500)
+                                AppState.reconnectPc()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("🧪 Simulate Channel Drop (Test Failover)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
         }
     }
@@ -1151,6 +1639,18 @@ fun StorageTab(context: Context) {
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { AppState.selectedNavigationTab = 0 }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("← Back to Transfers", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+
         // 1. Storage Overview Card
         item {
             Card(
