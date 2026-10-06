@@ -10,15 +10,28 @@ Built completely natively:
 
 ## 📥 Direct Downloads (v1.1.0)
 
-Get the latest production-ready builds directly from this repository:
+Get the latest production-ready builds directly from GitHub Releases:
 
-| Platform | Package | Version | Size | Direct Download Link |
-| :--- | :--- | :--- | :--- | :--- |
-| 📱 **Android** | `APK` (Universal) | `v1.1.0` (Build 101) | ~13.2 MB | [⬇ **Download ConnectToWindow APK**](https://github.com/Vijay-1010110/ConnectToPhone/raw/main/dist/ConnectToWindow-v1.1.0.apk) |
-| 💻 **Windows 10/11** | `ZIP` (Portable x64) | `v1.1.0` (Build 101) | ~878 KB | [⬇ **Download Windows Portable Suite**](https://github.com/Vijay-1010110/ConnectToPhone/raw/main/dist/ConnectToWindow-Desktop-v1.1.0-win-x64.zip) |
+| Platform | Package | Version | Size | Direct Download Link | Alternate Mirror |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 📱 **Android** | `APK` (Universal) | `v1.1.0` (Build 101) | ~13.2 MB | [⬇ **Download ConnectToWindow APK**](https://github.com/Vijay-1010110/ConnectToPhone/releases/download/v1.1.0/ConnectToWindow-v1.1.0.apk) | [Raw Mirror](https://github.com/Vijay-1010110/ConnectToPhone/raw/main/dist/ConnectToWindow-v1.1.0.apk) |
+| 💻 **Windows 10/11** | `ZIP` (Portable x64) | `v1.1.0` (Build 101) | ~508 KB | [⬇ **Download Windows Portable Suite**](https://github.com/Vijay-1010110/ConnectToPhone/releases/download/v1.1.0/ConnectToWindow-Desktop-v1.1.0-win-x64.zip) | [Raw Mirror](https://github.com/Vijay-1010110/ConnectToPhone/raw/main/dist/ConnectToWindow-Desktop-v1.1.0-win-x64.zip) |
+
+> [!IMPORTANT]
+> **📱 Stuck at "Downloading..." inside the GitHub Mobile App?**
+> The GitHub mobile app tries to preview APK binary files inside its internal code viewer, which hangs.
+> **Solution**:
+> 1. In the GitHub mobile app, tap the **three dots (`⋮`)** in the top-right corner of the screen.
+> 2. Select **"Open in Browser"** (Chrome, Firefox, Samsung Internet, etc.).
+> 3. Tap the download link in your browser — Android's system Download Manager will download the APK in seconds!
+>
+> Or, if your phone is connected to your PC with USB, run this one command in your PC terminal to install instantly:
+> ```bash
+> adb install -r dist/ConnectToWindow-v1.1.0.apk
+> ```
 
 > [!TIP]
-> **GitHub Releases**: You can also browse release assets and tag details on the [GitHub Releases Page](https://github.com/Vijay-1010110/ConnectToPhone/releases).
+> **GitHub Releases**: You can also browse release assets and changelog details on the official [GitHub Releases Page](https://github.com/Vijay-1010110/ConnectToPhone/releases/tag/v1.1.0).
 
 ### Verification & Checksums (SHA-256)
 - **`ConnectToWindow-v1.1.0.apk`**:
