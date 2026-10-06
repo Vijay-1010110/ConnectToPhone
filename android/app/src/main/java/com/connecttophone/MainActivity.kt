@@ -527,28 +527,21 @@ class MainActivity : ComponentActivity() {
 
     private fun setupTransportHandlers(transport: ITransport) {
         activeTransports[transport.channelId] = transport
+        AppState.activeTransportsMap[transport.channelId] = transport
         AppState.activeTransportInstance = transport
         AppState.isConnected = true
 
         runOnUiThread {
-            when (transport.type) {
-                TransportType.USB_ADB -> {
-                    AppState.activeProtocolName = "USB ⚡"
-                    AppState.standbyProtocols = "Wi-Fi & Bluetooth Standby 💤"
-                    AppState.usbSpeedMb = 140.0
-                    AppState.currentSpeedMb = 140.0
-                }
-                TransportType.BLUETOOTH_RFCOMM -> {
-                    AppState.activeProtocolName = "Bluetooth ⚡"
-                    AppState.standbyProtocols = "Wi-Fi & USB Standby 💤"
-                    AppState.currentSpeedMb = 3.0
-                }
-                else -> {
-                    AppState.activeProtocolName = "Wi-Fi 📶"
-                    AppState.standbyProtocols = "USB & Bluetooth Standby 💤"
-                    AppState.wifiSpeedMb = 85.0
-                    AppState.currentSpeedMb = 85.0
-                }
+            AppState.updateActiveProtocols()
+            if (AppState.isUsbConnected) {
+                AppState.usbSpeedMb = 140.0
+            }
+            if (AppState.isWifiConnected) {
+                AppState.wifiSpeedMb = 85.0
+            }
+            AppState.currentSpeedMb = (if (AppState.isUsbConnected) 140.0 else 0.0) + (if (AppState.isWifiConnected) 85.0 else 0.0) + (if (AppState.isBluetoothConnected) 3.0 else 0.0)
+            if (AppState.currentSpeedMb == 0.0) {
+                AppState.currentSpeedMb = if (transport.type == TransportType.USB_ADB) 140.0 else 85.0
             }
         }
 
@@ -564,15 +557,13 @@ class MainActivity : ComponentActivity() {
 
         transport.onDisconnected = { t ->
             activeTransports.remove(t.channelId)
-            if (AppState.activeTransportInstance?.channelId == t.channelId) {
-                AppState.activeTransportInstance = activeTransports.values.firstOrNull()
-                AppState.isConnected = AppState.activeTransportInstance != null
+            AppState.activeTransportsMap.remove(t.channelId)
+            runOnUiThread {
+                AppState.updateActiveProtocols()
                 if (!AppState.isConnected) {
-                    runOnUiThread {
-                        AppState.connectedDeviceName = "Searching..."
-                        AppState.currentSpeedMb = 0.0
-                        AppState.isQueryingPcFiles = false
-                    }
+                    AppState.connectedDeviceName = "Searching..."
+                    AppState.currentSpeedMb = 0.0
+                    AppState.isQueryingPcFiles = false
                 }
             }
         }
@@ -788,9 +779,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        try { btServerSocket?.close() } catch (_: Exception) {}
-        tcpServer?.close()
-        udpBeacon?.close()
-        clipboardService?.stopListening()
+        if (!TransferForegroundService.isServiceRunning) {
+            try { btServerSocket?.close() } catch (_: Exception) {}
+            tcpServer?.close()
+            udpBeacon?.close()
+            clipboardService?.stopListening()
+        }
     }
 }

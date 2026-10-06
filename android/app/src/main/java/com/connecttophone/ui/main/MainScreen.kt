@@ -117,7 +117,7 @@ fun MainScreen(
                             )
                         }
                         Text(
-                            if (AppState.isConnected) "Connected: ${AppState.connectedDeviceName.ifEmpty { AppState.targetPcName }}" else "Waiting for PC • Tap to Pair...",
+                            if (AppState.isConnected) "Connected: ${AppState.connectedDeviceName.ifEmpty { AppState.targetPcName }} (${AppState.activeProtocolName})" else "Waiting for PC • Tap to Pair...",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1336,32 +1336,59 @@ fun ClipboardTab(
 @Composable
 fun RemoteControlTab(context: Context) {
     var textToSend by remember { mutableStateOf("") }
-    var showExtraHotkeys by remember { mutableStateOf(false) }
+    var isLiveTypewriter by remember { mutableStateOf(true) }
+    var showFullKeyboard by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // TOP SECTION: COMPACT KEYBOARD, SHORTCUTS, MEDIA & POWER (Fixed at top, fits on screen)
+        // TOP SECTION: LIVE TYPEWRITER KEYBOARD, PC KEYBOARD EXPANDER, MEDIA & POWER
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
-                // Row 1: Text input to PC + Send button + Toggle Hotkeys
+                // Row 1: Text input with Live Typewriter mode
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
                         value = textToSend,
-                        onValueChange = { textToSend = it },
-                        placeholder = { Text("Type to PC...", fontSize = 12.sp) },
+                        onValueChange = { newText ->
+                            if (isLiveTypewriter && AppState.isConnected) {
+                                if (newText.length > textToSend.length) {
+                                    val added = newText.substring(textToSend.length)
+                                    AppState.sendKeyboardKey(text = added)
+                                } else if (newText.length < textToSend.length) {
+                                    val diff = textToSend.length - newText.length
+                                    repeat(diff) {
+                                        AppState.sendKeyboardKey(specialKey = "BACKSPACE")
+                                    }
+                                }
+                            }
+                            textToSend = newText
+                        },
+                        placeholder = {
+                            Text(
+                                if (isLiveTypewriter) "⚡ Live typing to PC..." else "Type text to send...",
+                                fontSize = 12.sp
+                            )
+                        },
                         modifier = Modifier.weight(1f).height(46.dp),
                         singleLine = true
                     )
                     Spacer(Modifier.width(6.dp))
+                    if (textToSend.isNotEmpty()) {
+                        IconButton(
+                            onClick = { textToSend = "" },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Text("✕", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                     Button(
                         onClick = {
                             if (textToSend.isNotEmpty()) {
@@ -1370,46 +1397,168 @@ fun RemoteControlTab(context: Context) {
                                 Toast.makeText(context, "Sent to PC!", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                         modifier = Modifier.height(42.dp)
                     ) {
-                        Text("Send", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("Send", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                     IconButton(
-                        onClick = { showExtraHotkeys = !showExtraHotkeys },
+                        onClick = { showFullKeyboard = !showFullKeyboard },
                         modifier = Modifier.size(36.dp)
                     ) {
-                        Text(if (showExtraHotkeys) "▲" else "⌨️", fontSize = 16.sp)
+                        Text(if (showFullKeyboard) "▲" else "💻", fontSize = 16.sp)
                     }
                 }
 
-                // Row 2: Collapsible Quick Hotkeys
-                if (showExtraHotkeys) {
+                // Row 1b: Mode Bar (Live Typewriter toggle badge + quick trigger)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        color = if (isLiveTypewriter) Color(0xFF064E3B) else MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.clickable { isLiveTypewriter = !isLiveTypewriter }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                if (isLiveTypewriter) "⚡ Live Typewriter: ON" else "💤 Live Mode: OFF (Tap)",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isLiveTypewriter) Color(0xFF86EFAC) else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        FilledTonalButton(
+                            onClick = { AppState.sendKeyboardKey(specialKey = "ENTER") },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Text("↵ Enter", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                        FilledTonalButton(
+                            onClick = { AppState.sendKeyboardKey(specialKey = "BACKSPACE") },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Text("⌫ Back", fontSize = 10.sp)
+                        }
+                        FilledTonalButton(
+                            onClick = { showFullKeyboard = !showFullKeyboard },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Text(if (showFullKeyboard) "Hide Keys" else "💻 PC Keys", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                // Row 2: Comprehensive Virtual Computer Keyboard
+                if (showFullKeyboard) {
                     Spacer(Modifier.height(4.dp))
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            .background(Color(0xFF18181B), RoundedCornerShape(8.dp))
+                            .padding(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        listOf(
-                            "Alt+Tab" to "ALT_TAB",
-                            "Win+D" to "WIN_D",
-                            "F5" to "F5",
-                            "Ctrl+C" to "COPY",
-                            "Ctrl+V" to "PASTE",
-                            "Ctrl+Z" to "UNDO",
-                            "Enter" to "ENTER",
-                            "⌫ Back" to "BACKSPACE",
-                            "Esc" to "ESC",
-                            "Space" to "SPACE"
-                        ).forEach { (label, key) ->
-                            FilledTonalButton(
-                                onClick = { AppState.sendKeyboardKey(specialKey = key) },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                modifier = Modifier.height(30.dp)
-                            ) {
-                                Text(label, fontSize = 10.sp)
+                        // Keyboard Row 1: Function Keys (F1-F12 + Esc + Del)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf(
+                                "Esc" to "ESC",
+                                "F1" to "F1", "F2" to "F2", "F3" to "F3", "F4" to "F4",
+                                "F5" to "F5", "F6" to "F6", "F7" to "F7", "F8" to "F8",
+                                "F9" to "F9", "F10" to "F10", "F11" to "F11", "F12" to "F12",
+                                "PrtSc" to "PRTSC", "Del" to "DEL"
+                            ).forEach { (label, key) ->
+                                Button(
+                                    onClick = { AppState.sendKeyboardKey(specialKey = key) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF27272A)),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 1.dp),
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier.height(30.dp)
+                                ) {
+                                    Text(label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFE4E4E7))
+                                }
+                            }
+                        }
+
+                        // Keyboard Row 2: Windows Shortcuts & Combos
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf(
+                                "Alt+Tab" to "ALT_TAB",
+                                "Win+D" to "WIN_D",
+                                "Win+E" to "WIN_E",
+                                "Win+R" to "WIN_R",
+                                "Ctrl+C" to "CTRL_C",
+                                "Ctrl+V" to "CTRL_V",
+                                "Ctrl+X" to "CTRL_X",
+                                "Ctrl+Z" to "CTRL_Z",
+                                "Ctrl+A" to "CTRL_A",
+                                "Ctrl+S" to "CTRL_S",
+                                "Ctrl+F" to "CTRL_F",
+                                "Task Mgr" to "TASK_MGR"
+                            ).forEach { (label, key) ->
+                                FilledTonalButton(
+                                    onClick = { AppState.sendKeyboardKey(specialKey = key) },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 1.dp),
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier.height(30.dp)
+                                ) {
+                                    Text(label, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                        }
+
+                        // Keyboard Row 3: Modifiers, Navigation & Arrow D-Pad
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf(
+                                "Tab" to "TAB",
+                                "Win" to "WIN",
+                                "Alt" to "ALT",
+                                "Ctrl" to "CTRL",
+                                "Shift" to "SHIFT",
+                                "Home" to "HOME",
+                                "End" to "END",
+                                "PgUp" to "PGUP",
+                                "PgDn" to "PGDN",
+                                "◄" to "LEFT",
+                                "▲" to "UP",
+                                "▼" to "DOWN",
+                                "►" to "RIGHT",
+                                "Space" to "SPACE"
+                            ).forEach { (label, key) ->
+                                Button(
+                                    onClick = { AppState.sendKeyboardKey(specialKey = key) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = if (label in listOf("◄", "▲", "▼", "►")) Color(0xFF2563EB) else Color(0xFF3F3F46)),
+                                    contentPadding = PaddingValues(horizontal = 9.dp, vertical = 1.dp),
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier.height(30.dp)
+                                ) {
+                                    Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
                             }
                         }
                     }

@@ -25,10 +25,35 @@ public static class Win32InputSimulator
     private const byte VK_SHIFT = 0x10;
     private const byte VK_CONTROL = 0x11;
     private const byte VK_MENU = 0x12; // Alt
+    private const byte VK_PAUSE = 0x13;
+    private const byte VK_CAPITAL = 0x14; // Caps Lock
     private const byte VK_ESCAPE = 0x1B;
     private const byte VK_SPACE = 0x20;
+    private const byte VK_PRIOR = 0x21; // Page Up
+    private const byte VK_NEXT = 0x22; // Page Down
+    private const byte VK_END = 0x23;
+    private const byte VK_HOME = 0x24;
+    private const byte VK_LEFT = 0x25;
+    private const byte VK_UP = 0x26;
+    private const byte VK_RIGHT = 0x27;
+    private const byte VK_DOWN = 0x28;
+    private const byte VK_SNAPSHOT = 0x2C; // Print Screen
+    private const byte VK_INSERT = 0x2D;
+    private const byte VK_DELETE = 0x2E;
     private const byte VK_LWIN = 0x5B;
+
+    private const byte VK_F1 = 0x70;
+    private const byte VK_F2 = 0x71;
+    private const byte VK_F3 = 0x72;
+    private const byte VK_F4 = 0x73;
     private const byte VK_F5 = 0x74;
+    private const byte VK_F6 = 0x75;
+    private const byte VK_F7 = 0x76;
+    private const byte VK_F8 = 0x77;
+    private const byte VK_F9 = 0x78;
+    private const byte VK_F10 = 0x79;
+    private const byte VK_F11 = 0x7A;
+    private const byte VK_F12 = 0x7B;
 
     private const byte VK_VOLUME_MUTE = 0xAD;
     private const byte VK_VOLUME_DOWN = 0xAE;
@@ -55,8 +80,6 @@ public static class Win32InputSimulator
 
     public static void HandleMouse(MouseControlPayload p)
     {
-        try { System.IO.File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[Input] Mouse dx={p.DeltaX}, dy={p.DeltaY}, left={p.LeftClick}, right={p.RightClick}, mid={p.MiddleClick}, w={p.WheelDelta}\n"); } catch {}
-
         // 1. Movement
         if (p.DeltaX != 0 || p.DeltaY != 0)
         {
@@ -118,50 +141,126 @@ public static class Win32InputSimulator
 
     public static void HandleKeyboard(KeyboardControlPayload p)
     {
-        try { System.IO.File.AppendAllText(@"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log", $"[Input] Keyboard text='{p.Text}', key='{p.SpecialKey}'\n"); } catch {}
-
         // 1. Special Keys & Hotkeys
         if (!string.IsNullOrEmpty(p.SpecialKey))
         {
             switch (p.SpecialKey.ToUpperInvariant())
             {
+                // Combinations
                 case "ALT_TAB":
                     SendHotkey(VK_MENU, VK_TAB);
                     break;
                 case "WIN_D":
                     SendHotkey(VK_LWIN, 0x44); // 'D'
                     break;
+                case "WIN_E":
+                    SendHotkey(VK_LWIN, 0x45); // 'E'
+                    break;
+                case "WIN_R":
+                    SendHotkey(VK_LWIN, 0x52); // 'R'
+                    break;
+                case "WIN_L":
+                    LockWorkStation();
+                    break;
+                case "ALT_F4":
+                    SendHotkey(VK_MENU, VK_F4);
+                    break;
                 case "COPY":
+                case "CTRL_C":
                     SendHotkey(VK_CONTROL, 0x43); // 'C'
                     break;
                 case "PASTE":
+                case "CTRL_V":
                     SendHotkey(VK_CONTROL, 0x56); // 'V'
                     break;
+                case "CUT":
+                case "CTRL_X":
+                    SendHotkey(VK_CONTROL, 0x58); // 'X'
+                    break;
                 case "UNDO":
+                case "CTRL_Z":
                     SendHotkey(VK_CONTROL, 0x5A); // 'Z'
                     break;
-                case "ENTER":
-                    SendKeyPress(VK_RETURN);
+                case "REDO":
+                case "CTRL_Y":
+                    SendHotkey(VK_CONTROL, 0x59); // 'Y'
                     break;
-                case "BACKSPACE":
-                    SendKeyPress(VK_BACK);
+                case "SELECT_ALL":
+                case "CTRL_A":
+                    SendHotkey(VK_CONTROL, 0x41); // 'A'
                     break;
-                case "ESC":
-                    SendKeyPress(VK_ESCAPE);
+                case "SAVE":
+                case "CTRL_S":
+                    SendHotkey(VK_CONTROL, 0x53); // 'S'
                     break;
-                case "SPACE":
-                    SendKeyPress(VK_SPACE);
+                case "FIND":
+                case "CTRL_F":
+                    SendHotkey(VK_CONTROL, 0x46); // 'F'
                     break;
-                case "TAB":
-                    SendKeyPress(VK_TAB);
+                case "TASK_MGR":
+                case "CTRL_SHIFT_ESC":
+                    keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero);
+                    keybd_event(VK_SHIFT, 0, 0, UIntPtr.Zero);
+                    keybd_event(VK_ESCAPE, 0, 0, UIntPtr.Zero);
+                    keybd_event(VK_ESCAPE, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                    keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                    keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
                     break;
-                case "F5":
-                    SendKeyPress(VK_F5);
-                    break;
+
+                // Function Keys
+                case "F1": SendKeyPress(VK_F1); break;
+                case "F2": SendKeyPress(VK_F2); break;
+                case "F3": SendKeyPress(VK_F3); break;
+                case "F4": SendKeyPress(VK_F4); break;
+                case "F5": SendKeyPress(VK_F5); break;
+                case "F6": SendKeyPress(VK_F6); break;
+                case "F7": SendKeyPress(VK_F7); break;
+                case "F8": SendKeyPress(VK_F8); break;
+                case "F9": SendKeyPress(VK_F9); break;
+                case "F10": SendKeyPress(VK_F10); break;
+                case "F11": SendKeyPress(VK_F11); break;
+                case "F12": SendKeyPress(VK_F12); break;
+
+                // Navigation & Editing
+                case "ENTER": SendKeyPress(VK_RETURN); break;
+                case "BACKSPACE": SendKeyPress(VK_BACK); break;
+                case "ESC": SendKeyPress(VK_ESCAPE); break;
+                case "SPACE": SendKeyPress(VK_SPACE); break;
+                case "TAB": SendKeyPress(VK_TAB); break;
+                case "DELETE":
+                case "DEL": SendKeyPress(VK_DELETE); break;
+                case "INSERT":
+                case "INS": SendKeyPress(VK_INSERT); break;
+                case "HOME": SendKeyPress(VK_HOME); break;
+                case "END": SendKeyPress(VK_END); break;
+                case "PAGE_UP":
+                case "PGUP": SendKeyPress(VK_PRIOR); break;
+                case "PAGE_DOWN":
+                case "PGDN": SendKeyPress(VK_NEXT); break;
+
+                // Directional Arrows
+                case "UP":
+                case "ARROW_UP": SendKeyPress(VK_UP); break;
+                case "DOWN":
+                case "ARROW_DOWN": SendKeyPress(VK_DOWN); break;
+                case "LEFT":
+                case "ARROW_LEFT": SendKeyPress(VK_LEFT); break;
+                case "RIGHT":
+                case "ARROW_RIGHT": SendKeyPress(VK_RIGHT); break;
+
+                // System & Modifiers
+                case "PRINTSCREEN":
+                case "PRTSC": SendKeyPress(VK_SNAPSHOT); break;
+                case "CAPS":
+                case "CAPS_LOCK": SendKeyPress(VK_CAPITAL); break;
+                case "WIN": SendKeyPress(VK_LWIN); break;
+                case "CTRL": SendKeyPress(VK_CONTROL); break;
+                case "ALT": SendKeyPress(VK_MENU); break;
+                case "SHIFT": SendKeyPress(VK_SHIFT); break;
             }
         }
 
-        // 2. Direct Unicode Text Input
+        // 2. Direct Unicode Text Input (Instant Typewriter)
         if (!string.IsNullOrEmpty(p.Text))
         {
             foreach (char c in p.Text)

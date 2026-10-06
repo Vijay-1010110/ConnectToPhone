@@ -6,7 +6,7 @@ using System.Windows;
 
 namespace ConnectToPhone.App;
 
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
     private const string LogPath = @"d:\Antigravity projects\ConnectToPhone\app_lifecycle.log";
     private static Mutex? _singleInstanceMutex;

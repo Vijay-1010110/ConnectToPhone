@@ -81,20 +81,46 @@ object AppState {
     var pairingPinInput by mutableStateOf("")
 
     var activeTransportInstance: ITransport? = null
+    val activeTransportsMap = java.util.concurrent.ConcurrentHashMap<String, ITransport>()
+    var isUsbConnected by mutableStateOf(false)
+    var isWifiConnected by mutableStateOf(false)
     var scope: CoroutineScope? = null
     var triggerConnectCallback: (() -> Unit)? = null
 
+    fun updateActiveProtocols() {
+        val list = mutableListOf<String>()
+        val connectedList = activeTransportsMap.values.filter { it.isConnected }
+        val hasUsb = connectedList.any { it.type == com.connecttophone.protocol.TransportType.USB_ADB }
+        val hasWifi = connectedList.any { it.type == com.connecttophone.protocol.TransportType.WIFI_LAN }
+        val hasBt = connectedList.any { it.type == com.connecttophone.protocol.TransportType.BLUETOOTH_RFCOMM }
+
+        isUsbConnected = hasUsb
+        isWifiConnected = hasWifi
+        isBluetoothConnected = hasBt
+
+        if (hasUsb) list.add("⚡ USB")
+        if (hasWifi) list.add("📶 Wi-Fi")
+        if (hasBt) list.add("📱 Bluetooth")
+
+        if (list.isNotEmpty()) {
+            activeProtocolName = list.joinToString(" + ")
+            isConnected = true
+            activeTransportInstance = connectedList.firstOrNull()
+        } else {
+            activeProtocolName = "Disconnected"
+            isConnected = false
+            activeTransportInstance = null
+        }
+    }
+
     fun disconnectPc() {
-        val transport = activeTransportInstance
-        if (transport != null) {
+        for (transport in activeTransportsMap.values) {
             try {
                 transport.close()
             } catch (_: Exception) {}
         }
-        activeTransportInstance = null
-        isConnected = false
-        isBluetoothConnected = false
-        activeProtocolName = "Disconnected"
+        activeTransportsMap.clear()
+        updateActiveProtocols()
     }
 
     fun reconnectPc() {
@@ -103,27 +129,42 @@ object AppState {
 
     fun toggleWifiProtocol() {
         isWifiProtocolEnabled = !isWifiProtocolEnabled
-        if (!isWifiProtocolEnabled && activeProtocolName.contains("Wi-Fi")) {
-            disconnectPc()
-        } else if (isWifiProtocolEnabled) {
+        if (!isWifiProtocolEnabled) {
+            val toRemove = activeTransportsMap.filter { it.value.type == com.connecttophone.protocol.TransportType.WIFI_LAN }
+            for ((key, transport) in toRemove) {
+                try { transport.close() } catch (_: Exception) {}
+                activeTransportsMap.remove(key)
+            }
+            updateActiveProtocols()
+        } else {
             reconnectPc()
         }
     }
 
     fun toggleUsbProtocol() {
         isUsbProtocolEnabled = !isUsbProtocolEnabled
-        if (!isUsbProtocolEnabled && activeProtocolName.contains("USB")) {
-            disconnectPc()
-        } else if (isUsbProtocolEnabled) {
+        if (!isUsbProtocolEnabled) {
+            val toRemove = activeTransportsMap.filter { it.value.type == com.connecttophone.protocol.TransportType.USB_ADB }
+            for ((key, transport) in toRemove) {
+                try { transport.close() } catch (_: Exception) {}
+                activeTransportsMap.remove(key)
+            }
+            updateActiveProtocols()
+        } else {
             reconnectPc()
         }
     }
 
     fun toggleBluetoothProtocol() {
         isBluetoothProtocolEnabled = !isBluetoothProtocolEnabled
-        if (!isBluetoothProtocolEnabled && isBluetoothConnected) {
-            disconnectPc()
-        } else if (isBluetoothProtocolEnabled) {
+        if (!isBluetoothProtocolEnabled) {
+            val toRemove = activeTransportsMap.filter { it.value.type == com.connecttophone.protocol.TransportType.BLUETOOTH_RFCOMM }
+            for ((key, transport) in toRemove) {
+                try { transport.close() } catch (_: Exception) {}
+                activeTransportsMap.remove(key)
+            }
+            updateActiveProtocols()
+        } else {
             triggerBluetoothConnectCallback?.invoke(null)
         }
     }

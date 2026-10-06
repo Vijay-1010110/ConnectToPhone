@@ -32,6 +32,8 @@ class TransferForegroundService : Service() {
         const val ACTION_RESUME = "com.connecttophone.service.RESUME"
         const val ACTION_CANCEL = "com.connecttophone.service.CANCEL"
 
+        var isServiceRunning = false
+
         fun startService(context: Context) {
             val intent = Intent(context, TransferForegroundService::class.java).apply {
                 action = ACTION_START
@@ -50,11 +52,18 @@ class TransferForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isServiceRunning = true
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createNotificationChannel()
     }
 
+    override fun onDestroy() {
+        isServiceRunning = false
+        super.onDestroy()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        isServiceRunning = true
         when (intent?.action) {
             ACTION_STOP -> stopForegroundService()
             ACTION_PAUSE -> { /* Handle pause */ }
@@ -71,10 +80,10 @@ class TransferForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "ConnectToWindow Transfers",
+                "ConnectToWindow Transfers & Sync",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows active transfer speed and progress in top bar"
+                description = "Keeps zero-idle background sync and transfers active"
                 setShowBadge(false)
             }
             notificationManager.createNotificationChannel(channel)
@@ -89,8 +98,8 @@ class TransferForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("ConnectToWindow ⚡")
-            .setContentText("Connected & Ready")
+            .setContentTitle("ConnectToWindow ⚡ (Background Active)")
+            .setContentText("Zero-idle clipboard sync & file pulls ready")
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
